@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TAB 관리자</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ea',
+              100: '#dcefd0',
+              200: '#b9dfa1',
+              300: '#8cc866',
+              400: '#5ea83a',
+              500: '#2D5016',
+              600: '#244012',
+              700: '#1E3A0F',
+              800: '#162b0b',
+              900: '#0e1c07',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Pretendard', system-ui, sans-serif; }
+    body { background: #F9FAFB; }
+
+    .tab-btn {
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn.active {
+      color: #2D5016;
+      border-bottom: 2px solid #2D5016;
+      font-weight: 600;
+    }
+    .tab-btn:not(.active) {
+      color: #6B7280;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn:hover:not(.active) {
+      color: #374151;
+    }
+
+    .btn-primary {
+      background: #2D5016; color: white;
+      transition: background-color 0.15s, transform 0.15s;
+    }
+    .btn-primary:hover { background: #1E3A0F; transform: scale(1.02); }
+    .btn-primary:focus { outline: none; box-shadow: 0 0 0 3px rgba(45,80,22,0.3); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-danger {
+      background: #EF4444; color: white;
+      transition: background-color 0.15s, transform 0.15s;
+    }
+    .btn-danger:hover { background: #DC2626; transform: scale(1.02); }
+    .btn-danger:focus { outline: none; box-shadow: 0 0 0 3px rgba(239,68,68,0.3); }
+    .btn-danger:active { transform: scale(0.98); }
+
+    .status-badge {
+      padding: 2px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-confirmed { background: #D1FAE5; color: #065F46; }
+    .status-completed { background: #DBEAFE; color: #1E40AF; }
+    .status-cancelled { background: #FEE2E2; color: #991B1B; }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #D1D5DB;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-switch.active { background: #2D5016; }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch.active::after { transform: translateX(20px); }
+
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Login Gate -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-lg max-w-sm w-full p-8">
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 rounded-xl bg-brand-500 flex items-center justify-center mx-auto mb-3">
+          <span class="text-white font-bold text-2xl">T</span>
+        </div>
+        <h1 class="text-xl font-bold text-gray-900">TAB 관리자</h1>
+        <p class="text-sm text-gray-500 mt-1">비밀번호를 입력해주세요</p>
+      </div>
+      <form id="login-form" class="space-y-4">
+        <input type="password" id="login-password" required placeholder="비밀번호"
+          class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none text-center text-lg tracking-widest">
+        <p id="login-error" class="text-red-500 text-sm text-center hidden">비밀번호가 올바르지 않습니다.</p>
+        <button type="submit" class="btn-primary w-full py-3 rounded-xl font-semibold">로그인</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+            <span class="text-white font-bold text-sm">T</span>
+          </div>
+          <h1 class="text-base font-bold text-gray-900">TAB 관리자</h1>
+        </div>
+        <button onclick="logout()" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">로그아웃</button>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="bg-white border-b border-gray-200">
+      <div class="max-w-6xl mx-auto px-4 flex gap-6 overflow-x-auto">
+        <button class="tab-btn active py-3 text-sm whitespace-nowrap" data-tab="bookings">예약 관리</button>
+        <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="hours">운영 시간</button>
+        <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="overrides">날짜별 예외</button>
+        <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="settings">설정</button>
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+
+      <!-- Tab: 예약 관리 -->
+      <div id="tab-bookings" class="tab-content fade-in">
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 mb-4">
+          <select id="filter-status" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            <option value="all">전체 상태</option>
+            <option value="confirmed">확정</option>
+            <option value="completed">완료</option>
+            <option value="cancelled">취소</option>
+          </select>
+          <input type="date" id="filter-date-from" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+          <input type="date" id="filter-date-to" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+          <button onclick="loadBookings()" class="btn-primary px-4 py-2 rounded-lg text-sm">조회</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div class="bg-white rounded-xl p-4 border border-gray-100">
+            <p class="text-xs text-gray-500">전체 예약</p>
+            <p id="stat-total" class="text-2xl font-bold text-gray-900 mt-1">0</p>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100">
+            <p class="text-xs text-gray-500">확정</p>
+            <p id="stat-confirmed" class="text-2xl font-bold text-green-600 mt-1">0</p>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100">
+            <p class="text-xs text-gray-500">완료</p>
+            <p id="stat-completed" class="text-2xl font-bold text-blue-600 mt-1">0</p>
+          </div>
+          <div class="bg-white rounded-xl p-4 border border-gray-100">
+            <p class="text-xs text-gray-500">취소</p>
+            <p id="stat-cancelled" class="text-2xl font-bold text-red-600 mt-1">0</p>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">날짜</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">시간</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">이름</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500 hidden md:table-cell">연락처</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500 hidden md:table-cell">이메일</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">상태</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">액션</th>
+                </tr>
+              </thead>
+              <tbody id="bookings-tbody">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="no-bookings" class="p-8 text-center text-gray-400 hidden">예약 내역이 없습니다.</div>
+        </div>
+      </div>
+
+      <!-- Tab: 운영 시간 -->
+      <div id="tab-hours" class="tab-content hidden fade-in">
+        <div class="bg-white rounded-xl border border-gray-100 p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-1">요일별 운영 시간</h3>
+          <p class="text-sm text-gray-500 mb-6">기본 운영 시간을 설정하세요. 활성화된 요일에만 예약이 가능합니다.</p>
+
+          <div class="space-y-3" id="hours-list">
+            <!-- Rendered by JS -->
+          </div>
+
+          <button onclick="saveOperatingHours()" id="save-hours-btn" class="btn-primary px-6 py-3 rounded-xl font-semibold mt-6">저장</button>
+          <span id="hours-save-msg" class="ml-3 text-sm text-green-600 hidden">저장되었습니다!</span>
+        </div>
+      </div>
+
+      <!-- Tab: 날짜별 예외 -->
+      <div id="tab-overrides" class="tab-content hidden fade-in">
+        <div class="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-1">날짜별 예외 추가</h3>
+          <p class="text-sm text-gray-500 mb-4">특정 날짜를 휴무일로 설정하거나, 특별 운영 시간을 지정하세요.</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">날짜</label>
+              <input type="date" id="override-date" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">유형</label>
+              <select id="override-type" onchange="toggleOverrideFields()" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+                <option value="blocked">휴무일</option>
+                <option value="custom">특별 운영시간</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="override-custom-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 hidden">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">시작 시간</label>
+              <input type="time" id="override-start" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">종료 시간</label>
+              <input type="time" id="override-end" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">사유 (선택)</label>
+            <input type="text" id="override-reason" placeholder="예: 공휴일, 개인 일정" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+          </div>
+
+          <button onclick="addOverride()" class="btn-primary px-6 py-3 rounded-xl font-semibold">추가</button>
+        </div>
+
+        <!-- Existing Overrides -->
+        <div class="bg-white rounded-xl border border-gray-100 p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">등록된 예외</h3>
+          <div id="overrides-list" class="space-y-3">
+            <!-- Rendered by JS -->
+          </div>
+          <div id="no-overrides" class="text-center py-6 text-gray-400 hidden">등록된 예외가 없습니다.</div>
+        </div>
+      </div>
+
+      <!-- Tab: 설정 -->
+      <div id="tab-settings" class="tab-content hidden fade-in">
+        <div class="bg-white rounded-xl border border-gray-100 p-6 max-w-md">
+          <h3 class="text-lg font-bold text-gray-900 mb-1">비밀번호 변경</h3>
+          <p class="text-sm text-gray-500 mb-6">관리자 비밀번호를 변경하세요.</p>
+
+          <form id="password-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">현재 비밀번호</label>
+              <input type="password" id="current-password" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
+              <input type="password" id="new-password" required minlength="4" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호 확인</label>
+              <input type="password" id="confirm-password" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none">
+            </div>
+            <p id="password-msg" class="text-sm hidden"></p>
+            <button type="submit" class="btn-primary px-6 py-3 rounded-xl font-semibold">변경하기</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ============================================================
+    // Supabase Configuration
+    // ============================================================
+    const SUPABASE_URL = 'https://coiwqnyuhwhejdafsrrg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvaXdxbnl1aHdoZWpkYWZzcnJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMDE5NTksImV4cCI6MjA4NzY3Nzk1OX0.FoSwF90RaBXbE9O04naNDlLUpDWdcjRxKVXjgKfbcBU';
+
+    let db = null;
+    let isSupabaseConnected = false;
+
+    try {
+      if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isSupabaseConnected = true;
+      }
+    } catch (e) {
+      console.error('Supabase 연결 실패:', e);
+    }
+
+    // ============================================================
+    // Demo Data
+    // ============================================================
+    let demoBookings = [
+      { id: '1', date: '2026-03-17', start_time: '10:00', end_time: '11:00', name: '김철수', phone: '010-1234-5678', email: 'kim@test.com', status: 'confirmed', created_at: '2026-03-15T10:00:00Z' },
+      { id: '2', date: '2026-03-18', start_time: '14:00', end_time: '15:00', name: '이영희', phone: '010-9876-5432', email: 'lee@test.com', status: 'completed', created_at: '2026-03-14T09:00:00Z' },
+      { id: '3', date: '2026-03-20', start_time: '11:00', end_time: '12:00', name: '박민수', phone: '010-5555-6666', email: 'park@test.com', status: 'confirmed', created_at: '2026-03-16T08:00:00Z' },
+    ];
+
+    let demoOperatingHours = [
+      { id: '1', day_of_week: 0, start_time: '10:00', end_time: '18:00', is_active: false },
+      { id: '2', day_of_week: 1, start_time: '10:00', end_time: '18:00', is_active: true },
+      { id: '3', day_of_week: 2, start_time: '10:00', end_time: '18:00', is_active: true },
+      { id: '4', day_of_week: 3, start_time: '10:00', end_time: '18:00', is_active: true },
+      { id: '5', day_of_week: 4, start_time: '10:00', end_time: '18:00', is_active: true },
+      { id: '6', day_of_week: 5, start_time: '10:00', end_time: '18:00', is_active: true },
+      { id: '7', day_of_week: 6, start_time: '10:00', end_time: '14:00', is_active: true },
+    ];
+
+    let demoOverrides = [];
+
+    const DAY_NAMES = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+    // ============================================================
+    // Auth
+    // ============================================================
+    let adminPasswordHash = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check session
+      if (sessionStorage.getItem('tab_admin_auth') === 'true') {
+        showDashboard();
+      }
+
+      document.getElementById('login-form').addEventListener('submit', handleLogin);
+      document.getElementById('password-form').addEventListener('submit', handlePasswordChange);
+
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      // Filters
+      document.getElementById('filter-status').addEventListener('change', loadBookings);
+
+      // Load admin password hash
+      if (isSupabaseConnected) {
+        const { data } = await db.from('admin_settings').select('password_hash').eq('id', 1).single();
+        if (data) adminPasswordHash = data.password_hash;
+      } else {
+        // Demo: password is "1234"
+        adminPasswordHash = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4';
+      }
+    });
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const password = document.getElementById('login-password').value;
+      const hash = await sha256(password);
+
+      if (hash === adminPasswordHash) {
+        sessionStorage.setItem('tab_admin_auth', 'true');
+        document.getElementById('login-error').classList.add('hidden');
+        showDashboard();
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('tab_admin_auth');
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('login-password').value = '';
+    }
+
+    async function showDashboard() {
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      await loadBookings();
+      await loadHours();
+      await loadOverrides();
+    }
+
+    // ============================================================
+    // Tab Switching
+    // ============================================================
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    }
+
+    // ============================================================
+    // Bookings Management
+    // ============================================================
+    async function loadBookings() {
+      const statusFilter = document.getElementById('filter-status').value;
+      const dateFrom = document.getElementById('filter-date-from').value;
+      const dateTo = document.getElementById('filter-date-to').value;
+
+      let bookings;
+
+      if (isSupabaseConnected) {
+        let query = db.from('bookings').select('*').order('date', { ascending: false });
+        if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+        if (dateFrom) query = query.gte('date', dateFrom);
+        if (dateTo) query = query.lte('date', dateTo);
+        const { data } = await query;
+        bookings = data || [];
+      } else {
+        bookings = demoBookings.filter(b => {
+          if (statusFilter !== 'all' && b.status !== statusFilter) return false;
+          if (dateFrom && b.date < dateFrom) return false;
+          if (dateTo && b.date > dateTo) return false;
+          return true;
+        });
+      }
+
+      renderBookings(bookings);
+      updateStats(bookings);
+    }
+
+    function renderBookings(bookings) {
+      const tbody = document.getElementById('bookings-tbody');
+      const noBookings = document.getElementById('no-bookings');
+
+      if (bookings.length === 0) {
+        tbody.innerHTML = '';
+        noBookings.classList.remove('hidden');
+        return;
+      }
+
+      noBookings.classList.add('hidden');
+      tbody.innerHTML = bookings.map(b => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 font-medium">${b.date}</td>
+          <td class="px-4 py-3">${formatTimeDisplay(b.start_time)} - ${formatTimeDisplay(b.end_time)}</td>
+          <td class="px-4 py-3 font-medium">${b.name}</td>
+          <td class="px-4 py-3 hidden md:table-cell text-gray-500">${b.phone}</td>
+          <td class="px-4 py-3 hidden md:table-cell text-gray-500">${b.email}</td>
+          <td class="px-4 py-3">
+            <span class="status-badge status-${b.status}">
+              ${b.status === 'confirmed' ? '확정' : b.status === 'completed' ? '완료' : '취소'}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex gap-2">
+              ${b.status === 'confirmed' ? `
+                <button onclick="updateBookingStatus('${b.id}', 'completed')" class="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">완료</button>
+                <button onclick="updateBookingStatus('${b.id}', 'cancelled')" class="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">취소</button>
+              ` : ''}
+              <button onclick="deleteBooking('${b.id}')" class="text-xs px-2 py-1 rounded bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">삭제</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateStats(bookings) {
+      // Get all bookings for stats (unfiltered)
+      const allBookings = isSupabaseConnected ? bookings : demoBookings;
+      document.getElementById('stat-total').textContent = allBookings.length;
+      document.getElementById('stat-confirmed').textContent = allBookings.filter(b => b.status === 'confirmed').length;
+      document.getElementById('stat-completed').textContent = allBookings.filter(b => b.status === 'completed').length;
+      document.getElementById('stat-cancelled').textContent = allBookings.filter(b => b.status === 'cancelled').length;
+    }
+
+    async function updateBookingStatus(id, status) {
+      if (isSupabaseConnected) {
+        await db.from('bookings').update({ status }).eq('id', id);
+      } else {
+        const booking = demoBookings.find(b => b.id === id);
+        if (booking) booking.status = status;
+      }
+      await loadBookings();
+    }
+
+    async function deleteBooking(id) {
+      if (!confirm('이 예약을 삭제하시겠습니까?')) return;
+
+      if (isSupabaseConnected) {
+        await db.from('bookings').delete().eq('id', id);
+      } else {
+        demoBookings = demoBookings.filter(b => b.id !== id);
+      }
+      await loadBookings();
+    }
+
+    // ============================================================
+    // Operating Hours
+    // ============================================================
+    async function loadHours() {
+      let hours;
+      if (isSupabaseConnected) {
+        const { data } = await db.from('operating_hours').select('*').order('day_of_week');
+        hours = data || [];
+      } else {
+        hours = demoOperatingHours;
+      }
+      renderHours(hours);
+    }
+
+    function renderHours(hours) {
+      const container = document.getElementById('hours-list');
+      container.innerHTML = hours.map(h => `
+        <div class="flex flex-wrap items-center gap-4 p-4 rounded-xl border border-gray-100 ${h.is_active ? 'bg-white' : 'bg-gray-50'}" data-day="${h.day_of_week}">
+          <div class="w-20">
+            <span class="font-medium text-sm ${h.day_of_week === 0 ? 'text-red-500' : h.day_of_week === 6 ? 'text-blue-500' : 'text-gray-900'}">${DAY_NAMES[h.day_of_week]}</span>
+          </div>
+          <div class="toggle-switch ${h.is_active ? 'active' : ''}" onclick="toggleDay(this, ${h.day_of_week})"></div>
+          <div class="flex items-center gap-2 ${h.is_active ? '' : 'opacity-40 pointer-events-none'}">
+            <input type="time" value="${h.start_time}" class="hour-start px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500" data-day="${h.day_of_week}">
+            <span class="text-gray-400">~</span>
+            <input type="time" value="${h.end_time}" class="hour-end px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500" data-day="${h.day_of_week}">
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleDay(el, dayOfWeek) {
+      el.classList.toggle('active');
+      const row = el.closest('[data-day]');
+      const inputs = row.querySelector('.flex.items-center.gap-2');
+      if (el.classList.contains('active')) {
+        inputs.classList.remove('opacity-40', 'pointer-events-none');
+      } else {
+        inputs.classList.add('opacity-40', 'pointer-events-none');
+      }
+    }
+
+    async function saveOperatingHours() {
+      const btn = document.getElementById('save-hours-btn');
+      const msg = document.getElementById('hours-save-msg');
+      btn.disabled = true;
+
+      const rows = document.querySelectorAll('#hours-list [data-day]');
+      const updates = [];
+
+      rows.forEach(row => {
+        const dayOfWeek = parseInt(row.dataset.day);
+        const isActive = row.querySelector('.toggle-switch').classList.contains('active');
+        const startTime = row.querySelector('.hour-start').value;
+        const endTime = row.querySelector('.hour-end').value;
+
+        updates.push({
+          day_of_week: dayOfWeek,
+          is_active: isActive,
+          start_time: startTime,
+          end_time: endTime
+        });
+      });
+
+      if (isSupabaseConnected) {
+        for (const u of updates) {
+          await db.from('operating_hours')
+            .update({ is_active: u.is_active, start_time: u.start_time, end_time: u.end_time })
+            .eq('day_of_week', u.day_of_week);
+        }
+      } else {
+        updates.forEach(u => {
+          const h = demoOperatingHours.find(h => h.day_of_week === u.day_of_week);
+          if (h) { h.is_active = u.is_active; h.start_time = u.start_time; h.end_time = u.end_time; }
+        });
+      }
+
+      btn.disabled = false;
+      msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2000);
+    }
+
+    // ============================================================
+    // Date Overrides
+    // ============================================================
+    async function loadOverrides() {
+      let overrides;
+      if (isSupabaseConnected) {
+        const { data } = await db.from('date_overrides').select('*').order('date', { ascending: true });
+        overrides = data || [];
+      } else {
+        overrides = demoOverrides;
+      }
+      renderOverrides(overrides);
+    }
+
+    function renderOverrides(overrides) {
+      const container = document.getElementById('overrides-list');
+      const noOverrides = document.getElementById('no-overrides');
+
+      if (overrides.length === 0) {
+        container.innerHTML = '';
+        noOverrides.classList.remove('hidden');
+        return;
+      }
+
+      noOverrides.classList.add('hidden');
+      container.innerHTML = overrides.map(o => {
+        const date = new Date(o.date + 'T00:00:00');
+        const dayName = DAY_NAMES[date.getDay()];
+        return `
+          <div class="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white">
+            <div>
+              <span class="font-medium text-gray-900">${o.date} (${dayName})</span>
+              <span class="ml-2 text-sm ${o.is_blocked ? 'text-red-500' : 'text-brand-500'}">
+                ${o.is_blocked ? '휴무' : `${formatTimeDisplay(o.start_time)} - ${formatTimeDisplay(o.end_time)}`}
+              </span>
+              ${o.reason ? `<span class="ml-2 text-xs text-gray-400">${o.reason}</span>` : ''}
+            </div>
+            <button onclick="deleteOverride('${o.id}')" class="btn-danger px-3 py-1 rounded-lg text-xs">삭제</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleOverrideFields() {
+      const type = document.getElementById('override-type').value;
+      document.getElementById('override-custom-fields').classList.toggle('hidden', type === 'blocked');
+    }
+
+    async function addOverride() {
+      const date = document.getElementById('override-date').value;
+      const type = document.getElementById('override-type').value;
+      const reason = document.getElementById('override-reason').value.trim();
+
+      if (!date) { alert('날짜를 선택해주세요.'); return; }
+
+      const override = {
+        date,
+        is_blocked: type === 'blocked',
+        start_time: type === 'custom' ? document.getElementById('override-start').value : null,
+        end_time: type === 'custom' ? document.getElementById('override-end').value : null,
+        reason: reason || null
+      };
+
+      if (type === 'custom' && (!override.start_time || !override.end_time)) {
+        alert('시작 시간과 종료 시간을 입력해주세요.');
+        return;
+      }
+
+      if (isSupabaseConnected) {
+        const { error } = await db.from('date_overrides').upsert(override, { onConflict: 'date' });
+        if (error) { alert('저장 중 오류가 발생했습니다.'); console.error(error); return; }
+      } else {
+        const existing = demoOverrides.findIndex(o => o.date === date);
+        if (existing >= 0) {
+          demoOverrides[existing] = { ...demoOverrides[existing], ...override };
+        } else {
+          override.id = String(Date.now());
+          demoOverrides.push(override);
+        }
+      }
+
+      // Reset form
+      document.getElementById('override-date').value = '';
+      document.getElementById('override-reason').value = '';
+      await loadOverrides();
+    }
+
+    async function deleteOverride(id) {
+      if (!confirm('이 예외를 삭제하시겠습니까?')) return;
+
+      if (isSupabaseConnected) {
+        await db.from('date_overrides').delete().eq('id', id);
+      } else {
+        demoOverrides = demoOverrides.filter(o => o.id !== id);
+      }
+      await loadOverrides();
+    }
+
+    // ============================================================
+    // Password Change
+    // ============================================================
+    async function handlePasswordChange(e) {
+      e.preventDefault();
+      const msg = document.getElementById('password-msg');
+      const currentPw = document.getElementById('current-password').value;
+      const newPw = document.getElementById('new-password').value;
+      const confirmPw = document.getElementById('confirm-password').value;
+
+      const currentHash = await sha256(currentPw);
+      if (currentHash !== adminPasswordHash) {
+        msg.textContent = '현재 비밀번호가 올바르지 않습니다.';
+        msg.className = 'text-sm text-red-500';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      if (newPw !== confirmPw) {
+        msg.textContent = '새 비밀번호가 일치하지 않습니다.';
+        msg.className = 'text-sm text-red-500';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      const newHash = await sha256(newPw);
+
+      if (isSupabaseConnected) {
+        await db.from('admin_settings').update({ password_hash: newHash }).eq('id', 1);
+      }
+
+      adminPasswordHash = newHash;
+      msg.textContent = '비밀번호가 변경되었습니다.';
+      msg.className = 'text-sm text-green-600';
+      msg.classList.remove('hidden');
+
+      document.getElementById('password-form').reset();
+      setTimeout(() => msg.classList.add('hidden'), 3000);
+    }
+
+    // ============================================================
+    // Helpers
+    // ============================================================
+    async function sha256(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function formatTimeDisplay(time) {
+      if (!time) return '';
+      const [h, m] = time.split(':').map(Number);
+      const period = h < 12 ? '오전' : '오후';
+      const displayH = h <= 12 ? h : h - 12;
+      return `${period} ${displayH}:${String(m).padStart(2, '0')}`;
+    }
+  </script>
+</body>
+</html>

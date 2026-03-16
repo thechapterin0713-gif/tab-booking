@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>태오의 실행 비즈니스 (TAB) - 1:1 코칭 예약</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ea',
+              100: '#dcefd0',
+              200: '#b9dfa1',
+              300: '#8cc866',
+              400: '#5ea83a',
+              500: '#2D5016',
+              600: '#244012',
+              700: '#1E3A0F',
+              800: '#162b0b',
+              900: '#0e1c07',
+            },
+            amber: {
+              400: '#FBBF24',
+              500: '#F59E0B',
+              600: '#D97706',
+            }
+          },
+          fontFamily: {
+            display: ['Pretendard', 'system-ui', 'sans-serif'],
+            body: ['Pretendard', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Pretendard', system-ui, sans-serif; }
+    body { background: #FAFAF5; }
+
+    .slot-btn {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .slot-btn:not(:disabled):hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 12px rgba(45, 80, 22, 0.2);
+    }
+    .slot-btn:not(:disabled):active {
+      transform: scale(0.97);
+    }
+    .slot-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .slot-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.3);
+    }
+
+    .cal-day {
+      transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+    .cal-day:not(.disabled):hover {
+      background-color: #dcefd0;
+      transform: scale(1.05);
+    }
+    .cal-day:not(.disabled):active {
+      transform: scale(0.95);
+    }
+    .cal-day.disabled {
+      color: #ccc;
+      cursor: not-allowed;
+    }
+    .cal-day.selected {
+      background-color: #2D5016;
+      color: white;
+      font-weight: 700;
+    }
+    .cal-day.today {
+      border: 2px solid #F59E0B;
+    }
+    .cal-day.has-slots {
+      position: relative;
+    }
+    .cal-day.has-slots::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      background: #2D5016;
+      border-radius: 50%;
+    }
+
+    .modal-overlay {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .btn-primary {
+      background: #2D5016;
+      color: white;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+    .btn-primary:hover { background: #1E3A0F; transform: scale(1.02); }
+    .btn-primary:focus { outline: none; box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.3); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-kakao {
+      background: #FEE500;
+      color: #191919;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+    .btn-kakao:hover { background: #F5DC00; transform: scale(1.02); }
+    .btn-kakao:focus { outline: none; box-shadow: 0 0 0 3px rgba(254, 229, 0, 0.4); }
+    .btn-kakao:active { transform: scale(0.98); }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-100">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center">
+          <span class="text-white font-bold text-lg">T</span>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-gray-900">태오의 실행 비즈니스</h1>
+          <p class="text-xs text-gray-500">TAB - Take Action in Business</p>
+        </div>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="#consultation" class="text-gray-600 hover:text-brand-500 transition-colors">무료 상담</a>
+        <a href="#booking" class="text-gray-600 hover:text-brand-500 transition-colors">예약하기</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="py-16 md:py-24">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <span class="inline-block px-3 py-1 bg-brand-50 text-brand-500 text-sm font-medium rounded-full mb-4">1:1 코칭 프로그램</span>
+      <h2 class="text-3xl md:text-5xl font-bold text-gray-900 leading-tight mb-6">
+        실행으로 바꾸는<br>
+        <span class="text-brand-500">비즈니스 코칭</span>
+      </h2>
+      <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+        아이디어만 있고 실행이 막막하신가요?<br>
+        1:1 맞춤 코칭으로 당신의 비즈니스를 함께 만들어갑니다.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="#consultation" class="btn-primary px-8 py-3 rounded-xl text-base font-semibold inline-block text-center">무료 상담 신청하기</a>
+        <a href="#booking" class="px-8 py-3 rounded-xl text-base font-semibold border-2 border-brand-500 text-brand-500 hover:bg-brand-50 transition-colors inline-block text-center">바로 예약하기</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: 무료 상담 신청 (Tally Form) -->
+  <section id="consultation" class="py-16 bg-white">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="text-center mb-10">
+        <span class="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full mb-3">STEP 1</span>
+        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">무료 상담 신청</h3>
+        <p class="text-gray-600">간단한 설문을 작성해주시면, 맞춤 상담을 안내해드립니다.</p>
+      </div>
+
+      <!-- Tally Form Embed -->
+      <div id="tally-form-container" class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-2xl overflow-hidden" style="min-height: 400px;">
+          <iframe data-tally-src="https://tally.so/embed/BzKzDN?alignLeft=1&hideTitle=0&transparentBackground=1&dynamicHeight=1"
+                  loading="lazy" width="100%" height="500" frameborder="0" marginheight="0" marginwidth="0"
+                  title="무료 상담 신청"></iframe>
+          <script>var d=document,w="https://tally.so/widgets/embed.js",v=function(){"undefined"!=typeof Tally?Tally.loadEmbeds():d.querySelectorAll("iframe[data-tally-src]:not([src])").forEach((function(e){e.src=e.dataset.tallySrc}))};if("undefined"!=typeof Tally)v();else if(d.querySelector('script[src="'+w+'"]')==null){var s=d.createElement("script");s.src=w,s.onload=v,s.onerror=v,d.body.appendChild(s)}</script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: 1:1 코칭 예약 (Calendar Booking) -->
+  <section id="booking" class="py-16">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="text-center mb-10">
+        <span class="inline-block px-3 py-1 bg-brand-50 text-brand-500 text-sm font-medium rounded-full mb-3">STEP 2</span>
+        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">1:1 코칭 예약</h3>
+        <p class="text-gray-600">원하시는 날짜와 시간을 선택해주세요.</p>
+      </div>
+
+      <div class="max-w-3xl mx-auto">
+        <!-- Supabase 미연결 안내 -->
+        <div id="supabase-notice" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-center hidden">
+          <p class="text-amber-700 text-sm">Supabase가 연결되지 않았습니다. 관리자 설정을 완료해주세요.</p>
+        </div>
+
+        <!-- Calendar -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <!-- Calendar Header -->
+          <div class="flex items-center justify-between mb-6">
+            <button id="prev-month" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <h4 id="calendar-title" class="text-lg font-bold text-gray-900"></h4>
+            <button id="next-month" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+
+          <!-- Day Names -->
+          <div class="grid grid-cols-7 mb-2">
+            <div class="text-center text-sm font-medium text-red-400 py-2">일</div>
+            <div class="text-center text-sm font-medium text-gray-500 py-2">월</div>
+            <div class="text-center text-sm font-medium text-gray-500 py-2">화</div>
+            <div class="text-center text-sm font-medium text-gray-500 py-2">수</div>
+            <div class="text-center text-sm font-medium text-gray-500 py-2">목</div>
+            <div class="text-center text-sm font-medium text-gray-500 py-2">금</div>
+            <div class="text-center text-sm font-medium text-blue-400 py-2">토</div>
+          </div>
+
+          <!-- Calendar Grid -->
+          <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Time Slots -->
+        <div id="time-slots-container" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 hidden fade-in">
+          <h4 class="font-bold text-gray-900 mb-1">
+            <span id="selected-date-display"></span> 예약 가능 시간
+          </h4>
+          <p class="text-sm text-gray-500 mb-4">원하시는 시간을 선택해주세요. (1시간 단위)</p>
+          <div id="time-slots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <!-- Rendered by JS -->
+          </div>
+          <div id="no-slots-msg" class="text-center py-8 hidden">
+            <p class="text-gray-400">이 날짜에는 예약 가능한 시간이 없습니다.</p>
+          </div>
+        </div>
+
+        <!-- Booking Form -->
+        <div id="booking-form-container" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hidden fade-in">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center">
+              <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <h4 class="font-bold text-gray-900">예약 정보 입력</h4>
+              <p class="text-sm text-gray-500" id="booking-summary"></p>
+            </div>
+          </div>
+
+          <form id="booking-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">이름 <span class="text-red-500">*</span></label>
+              <input type="text" id="input-name" required placeholder="홍길동"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 transition-colors outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">연락처 <span class="text-red-500">*</span></label>
+              <input type="tel" id="input-phone" required placeholder="010-1234-5678"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 transition-colors outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">이메일 <span class="text-red-500">*</span></label>
+              <input type="email" id="input-email" required placeholder="example@email.com"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 transition-colors outline-none">
+            </div>
+            <button type="submit" id="submit-btn" class="btn-primary w-full py-3 rounded-xl text-base font-semibold mt-2">
+              예약하기
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-100 py-8">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <p class="text-sm text-gray-400">&copy; 2026 태오의 실행 비즈니스 (TAB). All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmation-modal" class="fixed inset-0 z-50 hidden">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
+    <div class="relative min-h-screen flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative fade-in">
+        <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <div class="text-center">
+          <div class="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">예약이 완료되었습니다!</h3>
+          <div id="modal-booking-info" class="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+            <!-- Filled by JS -->
+          </div>
+
+          <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+            <p class="text-sm font-semibold text-gray-800 mb-2">아래 카카오톡 오픈채팅방에서<br>예약하신 날짜와 시간을 메시지로 보내주세요!</p>
+            <p class="text-xs text-gray-500 mb-3">예시: "3월 20일 오후 2시 예약했습니다"</p>
+            <a href="https://open.kakao.com/o/skZXIXWh" target="_blank" rel="noopener noreferrer"
+               class="btn-kakao inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3C6.477 3 2 6.463 2 10.691c0 2.727 1.818 5.117 4.545 6.472-.152.545-.984 3.527-1.02 3.746 0 0-.02.163.087.226.107.063.232.03.232.03.306-.043 3.553-2.313 4.11-2.71.67.097 1.363.148 2.046.148 5.523 0 10-3.463 10-7.912C22 6.463 17.523 3 12 3z"/>
+              </svg>
+              카카오톡으로 일정 확인하기
+            </a>
+          </div>
+
+          <button onclick="closeModal()" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loading-overlay" class="fixed inset-0 z-50 hidden">
+    <div class="modal-overlay absolute inset-0"></div>
+    <div class="relative min-h-screen flex items-center justify-center">
+      <div class="bg-white rounded-2xl p-8 shadow-xl flex flex-col items-center gap-4">
+        <div class="w-10 h-10 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin"></div>
+        <p class="text-gray-600 font-medium">예약 처리 중...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // Supabase Configuration
+    // ============================================================
+    // TODO: 아래 값을 실제 Supabase 프로젝트 값으로 교체하세요
+    const SUPABASE_URL = 'https://coiwqnyuhwhejdafsrrg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvaXdxbnl1aHdoZWpkYWZzcnJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMDE5NTksImV4cCI6MjA4NzY3Nzk1OX0.FoSwF90RaBXbE9O04naNDlLUpDWdcjRxKVXjgKfbcBU';
+
+    let db = null;
+    let isSupabaseConnected = false;
+
+    try {
+      if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+        db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        isSupabaseConnected = true;
+      }
+    } catch (e) {
+      console.error('Supabase 연결 실패:', e);
+    }
+
+    // ============================================================
+    // State
+    // ============================================================
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
+    let selectedDate = null;
+    let selectedSlot = null;
+    let operatingHours = [];
+    let dateOverrides = [];
+    let bookingsForMonth = [];
+
+    // ============================================================
+    // Demo Data (Supabase 미연결 시 사용)
+    // ============================================================
+    const demoOperatingHours = [
+      { day_of_week: 0, start_time: '10:00', end_time: '18:00', is_active: false },
+      { day_of_week: 1, start_time: '10:00', end_time: '18:00', is_active: true },
+      { day_of_week: 2, start_time: '10:00', end_time: '18:00', is_active: true },
+      { day_of_week: 3, start_time: '10:00', end_time: '18:00', is_active: true },
+      { day_of_week: 4, start_time: '10:00', end_time: '18:00', is_active: true },
+      { day_of_week: 5, start_time: '10:00', end_time: '18:00', is_active: true },
+      { day_of_week: 6, start_time: '10:00', end_time: '14:00', is_active: true },
+    ];
+    const demoDateOverrides = [];
+    const demoBookings = [];
+
+    // ============================================================
+    // Initialize
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!isSupabaseConnected) {
+        document.getElementById('supabase-notice').classList.remove('hidden');
+        operatingHours = demoOperatingHours;
+        dateOverrides = demoDateOverrides;
+        bookingsForMonth = demoBookings;
+      } else {
+        await loadOperatingHours();
+      }
+      renderCalendar();
+
+      document.getElementById('prev-month').addEventListener('click', () => {
+        currentMonth--;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        onMonthChange();
+      });
+      document.getElementById('next-month').addEventListener('click', () => {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        onMonthChange();
+      });
+
+      document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
+    });
+
+    async function onMonthChange() {
+      selectedDate = null;
+      selectedSlot = null;
+      hideTimeSlots();
+      hideBookingForm();
+      if (isSupabaseConnected) {
+        await loadMonthData();
+      }
+      renderCalendar();
+    }
+
+    // ============================================================
+    // Data Loading
+    // ============================================================
+    async function loadOperatingHours() {
+      const { data, error } = await db
+        .from('operating_hours')
+        .select('*')
+        .order('day_of_week');
+      if (!error && data) operatingHours = data;
+    }
+
+    async function loadMonthData() {
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const lastDay = new Date(currentYear, currentMonth + 1, 0);
+      const startStr = formatDate(firstDay);
+      const endStr = formatDate(lastDay);
+
+      const [overridesRes, bookingsRes] = await Promise.all([
+        db.from('date_overrides').select('*')
+          .gte('date', startStr).lte('date', endStr),
+        db.from('bookings').select('date, start_time')
+          .gte('date', startStr).lte('date', endStr)
+          .eq('status', 'confirmed')
+      ]);
+
+      if (!overridesRes.error) dateOverrides = overridesRes.data || [];
+      if (!bookingsRes.error) bookingsForMonth = bookingsRes.data || [];
+    }
+
+    // ============================================================
+    // Calendar Rendering
+    // ============================================================
+    function renderCalendar() {
+      const titleEl = document.getElementById('calendar-title');
+      titleEl.textContent = `${currentYear}년 ${currentMonth + 1}월`;
+
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Empty cells
+      for (let i = 0; i < firstDayOfMonth; i++) {
+        grid.appendChild(createEmptyCell());
+      }
+
+      // Day cells
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        const dateStr = formatDate(date);
+        const dayOfWeek = date.getDay();
+        const isPast = date < today;
+
+        const hours = getHoursForDate(date, dayOfWeek);
+        const isAvailable = !isPast && hours !== null;
+        const isToday = date.getTime() === today.getTime();
+        const isSelected = selectedDate && dateStr === formatDate(selectedDate);
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.textContent = day;
+        cell.className = `cal-day w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium cursor-pointer relative ${
+          isSelected ? 'selected' : ''
+        } ${isToday ? 'today' : ''} ${!isAvailable ? 'disabled' : ''} ${
+          isAvailable ? 'has-slots hover:cursor-pointer' : ''
+        } ${dayOfWeek === 0 ? 'text-red-400' : ''} ${dayOfWeek === 6 ? 'text-blue-400' : ''}`;
+
+        if (isAvailable) {
+          cell.addEventListener('click', () => selectDate(date));
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function createEmptyCell() {
+      const cell = document.createElement('div');
+      cell.className = 'w-full aspect-square';
+      return cell;
+    }
+
+    function getHoursForDate(date, dayOfWeek) {
+      const dateStr = formatDate(date);
+
+      // Check date override first
+      const override = dateOverrides.find(o => o.date === dateStr);
+      if (override) {
+        if (override.is_blocked) return null;
+        if (override.start_time && override.end_time) {
+          return { start: override.start_time, end: override.end_time };
+        }
+      }
+
+      // Fall back to operating hours
+      const hours = operatingHours.find(h => h.day_of_week === dayOfWeek);
+      if (!hours || !hours.is_active) return null;
+      return { start: hours.start_time, end: hours.end_time };
+    }
+
+    // ============================================================
+    // Date & Slot Selection
+    // ============================================================
+    async function selectDate(date) {
+      selectedDate = date;
+      selectedSlot = null;
+      hideBookingForm();
+      renderCalendar();
+      await showTimeSlots(date);
+    }
+
+    async function showTimeSlots(date) {
+      const container = document.getElementById('time-slots-container');
+      const grid = document.getElementById('time-slots-grid');
+      const noMsg = document.getElementById('no-slots-msg');
+      const dateDisplay = document.getElementById('selected-date-display');
+
+      const dayOfWeek = date.getDay();
+      const dateStr = formatDate(date);
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+      dateDisplay.textContent = `${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[dayOfWeek]})`;
+
+      const hours = getHoursForDate(date, dayOfWeek);
+      if (!hours) {
+        grid.innerHTML = '';
+        noMsg.classList.remove('hidden');
+        container.classList.remove('hidden');
+        return;
+      }
+
+      // Get bookings for this date
+      let bookedTimes = new Set();
+      if (isSupabaseConnected) {
+        const { data } = await db
+          .from('bookings')
+          .select('start_time')
+          .eq('date', dateStr)
+          .eq('status', 'confirmed');
+        if (data) bookedTimes = new Set(data.map(b => b.start_time));
+      } else {
+        bookedTimes = new Set(
+          demoBookings.filter(b => b.date === dateStr).map(b => b.start_time)
+        );
+      }
+
+      // Generate 1-hour slots
+      const slots = generateSlots(hours.start, hours.end);
+
+      if (slots.length === 0) {
+        grid.innerHTML = '';
+        noMsg.classList.remove('hidden');
+        container.classList.remove('hidden');
+        return;
+      }
+
+      noMsg.classList.add('hidden');
+      grid.innerHTML = '';
+
+      // Check if date is today, filter out past times
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+
+      slots.forEach(slot => {
+        const isBooked = bookedTimes.has(slot.start);
+        let isPastTime = false;
+        if (isToday) {
+          const [h] = slot.start.split(':').map(Number);
+          isPastTime = h <= now.getHours();
+        }
+        const isDisabled = isBooked || isPastTime;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.disabled = isDisabled;
+        btn.className = `slot-btn px-4 py-3 rounded-xl text-sm font-medium border-2 ${
+          isDisabled
+            ? 'bg-gray-100 border-gray-200 text-gray-400'
+            : selectedSlot && selectedSlot.start === slot.start
+              ? 'bg-brand-500 border-brand-500 text-white'
+              : 'bg-white border-gray-200 text-gray-700 hover:border-brand-500 hover:text-brand-500'
+        }`;
+        btn.innerHTML = `${formatTimeDisplay(slot.start)} - ${formatTimeDisplay(slot.end)}${isBooked ? '<br><span class="text-xs">예약완료</span>' : ''}`;
+
+        if (!isDisabled) {
+          btn.addEventListener('click', () => selectSlot(slot, date));
+        }
+
+        grid.appendChild(btn);
+      });
+
+      container.classList.remove('hidden');
+
+      // Scroll to time slots
+      container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function selectSlot(slot, date) {
+      selectedSlot = slot;
+      // Re-render slots to show selection
+      showTimeSlots(date);
+      showBookingForm(date, slot);
+    }
+
+    function showBookingForm(date, slot) {
+      const container = document.getElementById('booking-form-container');
+      const summary = document.getElementById('booking-summary');
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const dayOfWeek = date.getDay();
+
+      summary.textContent = `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[dayOfWeek]}) ${formatTimeDisplay(slot.start)} - ${formatTimeDisplay(slot.end)}`;
+      container.classList.remove('hidden');
+      container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ============================================================
+    // Booking Submission
+    // ============================================================
+    async function handleBookingSubmit(e) {
+      e.preventDefault();
+
+      if (!selectedDate || !selectedSlot) return;
+
+      const name = document.getElementById('input-name').value.trim();
+      const phone = document.getElementById('input-phone').value.trim();
+      const email = document.getElementById('input-email').value.trim();
+
+      if (!name || !phone || !email) return;
+
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = true;
+      showLoading(true);
+
+      const bookingData = {
+        date: formatDate(selectedDate),
+        start_time: selectedSlot.start,
+        end_time: selectedSlot.end,
+        name,
+        phone,
+        email,
+        status: 'confirmed'
+      };
+
+      if (isSupabaseConnected) {
+        const { error } = await db.from('bookings').insert([bookingData]);
+
+        if (error) {
+          showLoading(false);
+          submitBtn.disabled = false;
+
+          if (error.code === '23505') {
+            alert('이미 예약된 시간입니다. 다른 시간을 선택해주세요.');
+            await selectDate(selectedDate);
+          } else {
+            alert('예약 중 오류가 발생했습니다. 다시 시도해주세요.');
+            console.error('Booking error:', error);
+          }
+          return;
+        }
+      } else {
+        // Demo mode: simulate delay
+        await new Promise(r => setTimeout(r, 800));
+        demoBookings.push({ date: bookingData.date, start_time: bookingData.start_time });
+      }
+
+      showLoading(false);
+      showConfirmationModal(bookingData);
+
+      // Reset form
+      document.getElementById('booking-form').reset();
+      submitBtn.disabled = false;
+      selectedSlot = null;
+      hideBookingForm();
+      hideTimeSlots();
+      if (!isSupabaseConnected) renderCalendar();
+    }
+
+    // ============================================================
+    // Modal
+    // ============================================================
+    function showConfirmationModal(booking) {
+      const modal = document.getElementById('confirmation-modal');
+      const info = document.getElementById('modal-booking-info');
+      const date = new Date(booking.date + 'T00:00:00');
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+      info.innerHTML = `
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-500">날짜</span>
+            <span class="font-medium text-gray-900">${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">시간</span>
+            <span class="font-medium text-gray-900">${formatTimeDisplay(booking.start_time)} - ${formatTimeDisplay(booking.end_time)}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-500">이름</span>
+            <span class="font-medium text-gray-900">${booking.name}</span>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('confirmation-modal').classList.add('hidden');
+      document.body.style.overflow = '';
+      // Refresh calendar
+      if (isSupabaseConnected) {
+        loadMonthData().then(() => renderCalendar());
+      } else {
+        renderCalendar();
+      }
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading-overlay').classList.toggle('hidden', !show);
+    }
+
+    // ============================================================
+    // Helpers
+    // ============================================================
+    function hideTimeSlots() {
+      document.getElementById('time-slots-container').classList.add('hidden');
+    }
+
+    function hideBookingForm() {
+      document.getElementById('booking-form-container').classList.add('hidden');
+    }
+
+    function generateSlots(startTime, endTime) {
+      const slots = [];
+      let [startH, startM] = startTime.split(':').map(Number);
+      const [endH, endM] = endTime.split(':').map(Number);
+      const endMinutes = endH * 60 + endM;
+
+      while (startH * 60 + startM + 60 <= endMinutes) {
+        const s = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+        const eH = startH + 1;
+        const e = `${String(eH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`;
+        slots.push({ start: s, end: e });
+        startH++;
+      }
+      return slots;
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatTimeDisplay(time) {
+      const [h, m] = time.split(':').map(Number);
+      const period = h < 12 ? '오전' : '오후';
+      const displayH = h <= 12 ? h : h - 12;
+      return `${period} ${displayH}:${String(m).padStart(2, '0')}`;
+    }
+  </script>
+</body>
+</html>
