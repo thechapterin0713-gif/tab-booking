@@ -697,6 +697,9 @@
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      // 오늘 포함 3일간 예약 불가
+      const minBookingDate = new Date(today);
+      minBookingDate.setDate(minBookingDate.getDate() + 3);
 
       for (let i = 0; i < firstDayOfMonth; i++) {
         grid.appendChild(createEmptyCell());
@@ -706,7 +709,7 @@
         const date = new Date(currentYear, currentMonth, day);
         const dateStr = formatDate(date);
         const dayOfWeek = date.getDay();
-        const isPast = date < today;
+        const isPast = date < minBookingDate;
 
         const hours = getHoursForDate(date, dayOfWeek);
         const isAvailable = !isPast && hours !== null;
