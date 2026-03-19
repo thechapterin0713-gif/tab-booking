@@ -144,6 +144,7 @@
     <div class="bg-white border-b border-gray-200">
       <div class="max-w-6xl mx-auto px-4 flex gap-6 overflow-x-auto">
         <button class="tab-btn active py-3 text-sm whitespace-nowrap" data-tab="bookings">예약 관리</button>
+        <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="fixed">고정 예약</button>
         <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="hours">운영 시간</button>
         <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="overrides">날짜별 예외</button>
         <button class="tab-btn py-3 text-sm whitespace-nowrap" data-tab="settings">설정</button>
@@ -155,8 +156,13 @@
 
       <!-- Tab: 예약 관리 -->
       <div id="tab-bookings" class="tab-content fade-in">
-        <!-- Filters -->
-        <div class="flex flex-wrap gap-3 mb-4">
+        <!-- Add Booking + Filters -->
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <button onclick="toggleAddBooking()" id="add-booking-toggle" class="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            예약 추가
+          </button>
+          <div class="h-6 w-px bg-gray-200 hidden sm:block"></div>
           <select id="filter-status" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
             <option value="all">전체 상태</option>
             <option value="confirmed">확정</option>
@@ -166,6 +172,51 @@
           <input type="date" id="filter-date-from" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
           <input type="date" id="filter-date-to" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
           <button onclick="loadBookings()" class="btn-primary px-4 py-2 rounded-lg text-sm">조회</button>
+        </div>
+
+        <!-- Add Booking Form -->
+        <div id="add-booking-form" class="bg-white rounded-xl border border-gray-100 p-6 mb-6 hidden fade-in">
+          <h3 class="text-base font-bold text-gray-900 mb-4">수동 예약 추가</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">날짜 <span class="text-red-500">*</span></label>
+              <input type="date" id="add-date" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">시작 시간 <span class="text-red-500">*</span></label>
+              <input type="time" id="add-start-time" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">종료 시간</label>
+              <input type="time" id="add-end-time" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500" placeholder="미입력 시 1시간 후 자동">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">유형 <span class="text-red-500">*</span></label>
+              <select id="add-type" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+                <option value="free_consulting">1:1 무료 컨설팅</option>
+                <option value="tab_coaching">태실비 코칭</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">이름 <span class="text-red-500">*</span></label>
+              <input type="text" id="add-name" placeholder="홍길동" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">연락처 <span class="text-red-500">*</span></label>
+              <input type="tel" id="add-phone" placeholder="010-1234-5678" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+              <input type="email" id="add-email" placeholder="example@email.com" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="submitAddBooking()" class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold">등록</button>
+            <button onclick="toggleAddBooking()" class="px-5 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition-colors">취소</button>
+          </div>
+          <p id="add-booking-msg" class="text-sm mt-3 hidden"></p>
         </div>
 
         <!-- Stats -->
@@ -196,6 +247,7 @@
                 <tr>
                   <th class="text-left px-4 py-3 font-medium text-gray-500">날짜</th>
                   <th class="text-left px-4 py-3 font-medium text-gray-500">시간</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">유형</th>
                   <th class="text-left px-4 py-3 font-medium text-gray-500">이름</th>
                   <th class="text-left px-4 py-3 font-medium text-gray-500 hidden md:table-cell">연락처</th>
                   <th class="text-left px-4 py-3 font-medium text-gray-500 hidden md:table-cell">이메일</th>
@@ -212,14 +264,173 @@
         </div>
       </div>
 
+      <!-- Edit Booking Modal -->
+      <div id="edit-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeEditModal()"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative fade-in">
+            <button onclick="closeEditModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+            <h3 class="text-lg font-bold text-gray-900 mb-5">예약 수정</h3>
+            <input type="hidden" id="edit-id">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">날짜</label>
+                <input type="date" id="edit-date" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">상태</label>
+                <select id="edit-status" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+                  <option value="confirmed">확정</option>
+                  <option value="completed">완료</option>
+                  <option value="cancelled">취소</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">시작 시간</label>
+                <input type="time" id="edit-start-time" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">종료 시간</label>
+                <input type="time" id="edit-end-time" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">이름</label>
+              <input type="text" id="edit-name" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">연락처</label>
+                <input type="tel" id="edit-phone" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                <input type="email" id="edit-email" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+              <button onclick="submitEditBooking()" class="btn-primary px-6 py-2 rounded-lg text-sm font-semibold flex-1">저장</button>
+              <button onclick="closeEditModal()" class="px-6 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition-colors border border-gray-200">취소</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: 고정 예약 -->
+      <div id="tab-fixed" class="tab-content hidden fade-in">
+        <!-- 고정 예약 추가 -->
+        <div class="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-1">고정 예약 추가</h3>
+          <p class="text-sm text-gray-500 mb-4">매주 반복되는 회원 고정 시간을 등록하세요.</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">회원 이름 <span class="text-red-500">*</span></label>
+              <input type="text" id="fixed-name" placeholder="홍길동" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">요일 <span class="text-red-500">*</span></label>
+              <select id="fixed-day" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+                <option value="1">월요일</option>
+                <option value="2">화요일</option>
+                <option value="3">수요일</option>
+                <option value="4">목요일</option>
+                <option value="5">금요일</option>
+                <option value="6">토요일</option>
+                <option value="0">일요일</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">시간 <span class="text-red-500">*</span></label>
+              <input type="time" id="fixed-time" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">유형</label>
+              <select id="fixed-type" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+                <option value="free_consulting">1:1 무료 컨설팅</option>
+                <option value="tab_coaching">태실비 코칭</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="addFixedBooking()" class="btn-primary px-5 py-2 rounded-lg text-sm font-semibold">등록</button>
+          </div>
+          <p id="fixed-msg" class="text-sm mt-3 hidden"></p>
+        </div>
+
+        <!-- 고정 예약 목록 -->
+        <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">회원</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">요일</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">시간</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">유형</th>
+                  <th class="text-left px-4 py-3 font-medium text-gray-500">액션</th>
+                </tr>
+              </thead>
+              <tbody id="fixed-tbody">
+              </tbody>
+            </table>
+          </div>
+          <div id="no-fixed" class="p-8 text-center text-gray-400 hidden">등록된 고정 예약이 없습니다.</div>
+        </div>
+      </div>
+
       <!-- Tab: 운영 시간 -->
       <div id="tab-hours" class="tab-content hidden fade-in">
         <div class="bg-white rounded-xl border border-gray-100 p-6">
           <h3 class="text-lg font-bold text-gray-900 mb-1">요일별 운영 시간</h3>
-          <p class="text-sm text-gray-500 mb-6">기본 운영 시간을 설정하세요. 활성화된 요일에만 예약이 가능합니다.</p>
+          <p class="text-sm text-gray-500 mb-4">기본 운영 시간을 설정하세요. 활성화된 요일에만 예약이 가능합니다.</p>
+
+          <!-- 일괄 적용 -->
+          <div class="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
+            <p class="text-sm font-medium text-gray-700 mb-3">일괄 적용</p>
+            <div class="flex flex-wrap items-center gap-3">
+              <select id="bulk-target" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+                <option value="weekday">평일 (월~금)</option>
+                <option value="weekend">주말 (토~일)</option>
+                <option value="all">전체 요일</option>
+              </select>
+              <input type="time" id="bulk-start" value="10:00" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              <span class="text-gray-400">~</span>
+              <input type="time" id="bulk-end" value="18:00" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+              <button onclick="applyBulk()" class="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-200">적용</button>
+            </div>
+          </div>
 
           <div class="space-y-3" id="hours-list">
             <!-- Rendered by JS -->
+          </div>
+
+          <!-- 제외 시간 설정 -->
+          <div class="mt-6 bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <p class="text-sm font-medium text-gray-700 mb-1">요일별 제외 시간</p>
+            <p class="text-xs text-gray-400 mb-3">매주 반복적으로 예약을 받지 않을 시간을 설정합니다. (예: 매주 수요일 12:00~13:00 점심시간)</p>
+            <div class="flex flex-wrap items-center gap-3 mb-3">
+              <select id="exclude-day" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
+                <option value="1">월요일</option>
+                <option value="2">화요일</option>
+                <option value="3">수요일</option>
+                <option value="4">목요일</option>
+                <option value="5">금요일</option>
+                <option value="6">토요일</option>
+                <option value="0">일요일</option>
+                <option value="all">전체 요일</option>
+              </select>
+              <input type="time" id="exclude-time" class="px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500" placeholder="제외할 시간">
+              <button onclick="addExcludedTime()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-200">제외 추가</button>
+            </div>
+            <div id="excluded-times-list" class="space-y-2">
+              <!-- Rendered by JS -->
+            </div>
+            <div id="no-excluded" class="text-xs text-gray-400 hidden">등록된 제외 시간이 없습니다.</div>
           </div>
 
           <button onclick="saveOperatingHours()" id="save-hours-btn" class="btn-primary px-6 py-3 rounded-xl font-semibold mt-6">저장</button>
@@ -402,7 +613,9 @@
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
       await loadBookings();
+      await loadFixedBookings();
       await loadHours();
+      await loadExcludedTimes();
       await loadOverrides();
     }
 
@@ -464,6 +677,7 @@
         <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
           <td class="px-4 py-3 font-medium">${b.date}</td>
           <td class="px-4 py-3">${formatTimeDisplay(b.start_time)} - ${formatTimeDisplay(b.end_time)}</td>
+          <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded-full font-medium ${b.type === 'tab_coaching' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}">${b.type === 'tab_coaching' ? '태실비 코칭' : b.type === 'free_consulting' ? '무료 컨설팅' : '일반'}</span></td>
           <td class="px-4 py-3 font-medium">${b.name}</td>
           <td class="px-4 py-3 hidden md:table-cell text-gray-500">${b.phone}</td>
           <td class="px-4 py-3 hidden md:table-cell text-gray-500">${b.email}</td>
@@ -473,7 +687,8 @@
             </span>
           </td>
           <td class="px-4 py-3">
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="openEditModal('${b.id}')" class="text-xs px-2 py-1 rounded bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">수정</button>
               ${b.status === 'confirmed' ? `
                 <button onclick="updateBookingStatus('${b.id}', 'completed')" class="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">완료</button>
                 <button onclick="updateBookingStatus('${b.id}', 'cancelled')" class="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">취소</button>
@@ -516,6 +731,256 @@
     }
 
     // ============================================================
+    // Edit Booking
+    // ============================================================
+    let allBookingsCache = [];
+
+    // Store bookings for edit lookup
+    const _origRenderBookings = renderBookings;
+    renderBookings = function(bookings) {
+      allBookingsCache = bookings;
+      _origRenderBookings(bookings);
+    };
+
+    function openEditModal(id) {
+      const b = allBookingsCache.find(x => x.id === id);
+      if (!b) return;
+      document.getElementById('edit-id').value = b.id;
+      document.getElementById('edit-date').value = b.date;
+      document.getElementById('edit-start-time').value = (b.start_time || '').substring(0, 5);
+      document.getElementById('edit-end-time').value = (b.end_time || '').substring(0, 5);
+      document.getElementById('edit-name').value = b.name || '';
+      document.getElementById('edit-phone').value = b.phone || '';
+      document.getElementById('edit-email').value = b.email || '';
+      document.getElementById('edit-status').value = b.status || 'confirmed';
+      document.getElementById('edit-modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    async function submitEditBooking() {
+      const id = document.getElementById('edit-id').value;
+      const updates = {
+        date: document.getElementById('edit-date').value,
+        start_time: document.getElementById('edit-start-time').value,
+        end_time: document.getElementById('edit-end-time').value,
+        name: document.getElementById('edit-name').value.trim(),
+        phone: document.getElementById('edit-phone').value.trim(),
+        email: document.getElementById('edit-email').value.trim(),
+        status: document.getElementById('edit-status').value,
+      };
+
+      if (!updates.date || !updates.start_time || !updates.name) {
+        alert('날짜, 시작 시간, 이름은 필수입니다.');
+        return;
+      }
+
+      if (isSupabaseConnected) {
+        const { error } = await db.from('bookings').update(updates).eq('id', id);
+        if (error) {
+          alert('수정 실패: ' + error.message);
+          return;
+        }
+      } else {
+        const booking = demoBookings.find(b => b.id === id);
+        if (booking) Object.assign(booking, updates);
+      }
+
+      closeEditModal();
+      await loadBookings();
+    }
+
+    // ============================================================
+    // Add Booking (Manual)
+    // ============================================================
+    function toggleAddBooking() {
+      const form = document.getElementById('add-booking-form');
+      form.classList.toggle('hidden');
+      if (!form.classList.contains('hidden')) {
+        document.getElementById('add-booking-msg').classList.add('hidden');
+      }
+    }
+
+    // Auto-fill end time when start time changes (only if end is empty)
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('add-start-time').addEventListener('change', (e) => {
+        const endInput = document.getElementById('add-end-time');
+        if (!endInput.value && e.target.value) {
+          const [h, m] = e.target.value.split(':').map(Number);
+          endInput.value = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+      });
+    });
+
+    async function submitAddBooking() {
+      const date = document.getElementById('add-date').value;
+      const startTime = document.getElementById('add-start-time').value;
+      const name = document.getElementById('add-name').value.trim();
+      const phone = document.getElementById('add-phone').value.trim();
+      const email = document.getElementById('add-email').value.trim() || '-';
+      const msg = document.getElementById('add-booking-msg');
+
+      if (!date || !startTime || !name || !phone) {
+        msg.textContent = '날짜, 시작 시간, 이름, 연락처는 필수입니다.';
+        msg.className = 'text-sm mt-3 text-red-500';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      let endTime = document.getElementById('add-end-time').value;
+      if (!endTime) {
+        const [h, m] = startTime.split(':').map(Number);
+        endTime = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+
+      const type = document.getElementById('add-type').value;
+
+      const bookingData = {
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        name,
+        phone,
+        email,
+        type,
+        status: 'confirmed'
+      };
+
+      if (isSupabaseConnected) {
+        const { error } = await db.from('bookings').insert([bookingData]);
+        if (error) {
+          if (error.code === '23505') {
+            msg.textContent = '이미 해당 시간에 예약이 있습니다.';
+          } else {
+            msg.textContent = '등록 중 오류가 발생했습니다: ' + error.message;
+          }
+          msg.className = 'text-sm mt-3 text-red-500';
+          msg.classList.remove('hidden');
+          return;
+        }
+      } else {
+        bookingData.id = String(Date.now());
+        demoBookings.push(bookingData);
+      }
+
+      // Reset form
+      document.getElementById('add-date').value = '';
+      document.getElementById('add-start-time').value = '';
+      document.getElementById('add-end-time').value = '';
+      document.getElementById('add-name').value = '';
+      document.getElementById('add-phone').value = '';
+      document.getElementById('add-email').value = '';
+
+      msg.textContent = '예약이 등록되었습니다!';
+      msg.className = 'text-sm mt-3 text-green-600';
+      msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2000);
+
+      await loadBookings();
+    }
+
+    // ============================================================
+    // Fixed Bookings
+    // ============================================================
+    let fixedBookings = [];
+    const SHORT_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+    async function loadFixedBookings() {
+      if (isSupabaseConnected) {
+        const { data } = await db.from('fixed_bookings').select('*').order('day_of_week').order('start_time');
+        fixedBookings = data || [];
+      }
+      renderFixedBookings();
+    }
+
+    function renderFixedBookings() {
+      const tbody = document.getElementById('fixed-tbody');
+      const noFixed = document.getElementById('no-fixed');
+
+      if (fixedBookings.length === 0) {
+        tbody.innerHTML = '';
+        noFixed.classList.remove('hidden');
+        return;
+      }
+
+      noFixed.classList.add('hidden');
+      tbody.innerHTML = fixedBookings.map(f => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 font-medium">${f.name}</td>
+          <td class="px-4 py-3">
+            <span class="${f.day_of_week === 0 ? 'text-red-500' : f.day_of_week === 6 ? 'text-blue-500' : ''}">${DAY_NAMES[f.day_of_week]}</span>
+          </td>
+          <td class="px-4 py-3">${formatTimeDisplay(f.start_time)}</td>
+          <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded-full font-medium ${f.type === 'tab_coaching' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}">${f.type === 'tab_coaching' ? '태실비 코칭' : '무료 컨설팅'}</span></td>
+          <td class="px-4 py-3">
+            <button onclick="deleteFixedBooking('${f.id}')" class="text-xs px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 transition-colors">삭제</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function addFixedBooking() {
+      const name = document.getElementById('fixed-name').value.trim();
+      const dayOfWeek = parseInt(document.getElementById('fixed-day').value);
+      const time = document.getElementById('fixed-time').value;
+      const type = document.getElementById('fixed-type').value;
+      const msg = document.getElementById('fixed-msg');
+
+      if (!name || !time) {
+        msg.textContent = '회원 이름과 시간은 필수입니다.';
+        msg.className = 'text-sm mt-3 text-red-500';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      const [h, m] = time.split(':').map(Number);
+      const endTime = `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+      const data = {
+        name,
+        day_of_week: dayOfWeek,
+        start_time: time,
+        end_time: endTime,
+        type
+      };
+
+      if (isSupabaseConnected) {
+        const { error } = await db.from('fixed_bookings').insert([data]);
+        if (error) {
+          msg.textContent = error.code === '23505' ? '이미 해당 요일/시간에 고정 예약이 있습니다.' : '등록 실패: ' + error.message;
+          msg.className = 'text-sm mt-3 text-red-500';
+          msg.classList.remove('hidden');
+          return;
+        }
+      } else {
+        data.id = String(Date.now());
+        fixedBookings.push(data);
+      }
+
+      document.getElementById('fixed-name').value = '';
+      document.getElementById('fixed-time').value = '';
+      msg.textContent = '고정 예약이 등록되었습니다!';
+      msg.className = 'text-sm mt-3 text-green-600';
+      msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2000);
+      await loadFixedBookings();
+    }
+
+    async function deleteFixedBooking(id) {
+      if (!confirm('이 고정 예약을 삭제하시겠습니까?')) return;
+      if (isSupabaseConnected) {
+        await db.from('fixed_bookings').delete().eq('id', id);
+      } else {
+        fixedBookings = fixedBookings.filter(f => f.id !== id);
+      }
+      await loadFixedBookings();
+    }
+
+    // ============================================================
     // Operating Hours
     // ============================================================
     async function loadHours() {
@@ -532,24 +997,24 @@
     function renderHours(hours) {
       const container = document.getElementById('hours-list');
       container.innerHTML = hours.map(h => `
-        <div class="flex flex-wrap items-center gap-4 p-4 rounded-xl border border-gray-100 ${h.is_active ? 'bg-white' : 'bg-gray-50'}" data-day="${h.day_of_week}">
+        <div class="hours-row flex flex-wrap items-center gap-4 p-4 rounded-xl border border-gray-100 ${h.is_active ? 'bg-white' : 'bg-gray-50'}" data-day-row="${h.day_of_week}">
           <div class="w-20">
             <span class="font-medium text-sm ${h.day_of_week === 0 ? 'text-red-500' : h.day_of_week === 6 ? 'text-blue-500' : 'text-gray-900'}">${DAY_NAMES[h.day_of_week]}</span>
           </div>
-          <div class="toggle-switch ${h.is_active ? 'active' : ''}" onclick="toggleDay(this, ${h.day_of_week})"></div>
-          <div class="flex items-center gap-2 ${h.is_active ? '' : 'opacity-40 pointer-events-none'}">
-            <input type="time" value="${h.start_time}" class="hour-start px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500" data-day="${h.day_of_week}">
+          <div class="toggle-switch ${h.is_active ? 'active' : ''}" onclick="toggleDay(this)"></div>
+          <div class="hours-inputs flex items-center gap-2 ${h.is_active ? '' : 'opacity-40 pointer-events-none'}">
+            <input type="time" value="${h.start_time}" class="hour-start px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
             <span class="text-gray-400">~</span>
-            <input type="time" value="${h.end_time}" class="hour-end px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500" data-day="${h.day_of_week}">
+            <input type="time" value="${h.end_time}" class="hour-end px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500">
           </div>
         </div>
       `).join('');
     }
 
-    function toggleDay(el, dayOfWeek) {
+    function toggleDay(el) {
       el.classList.toggle('active');
-      const row = el.closest('[data-day]');
-      const inputs = row.querySelector('.flex.items-center.gap-2');
+      const row = el.closest('.hours-row');
+      const inputs = row.querySelector('.hours-inputs');
       if (el.classList.contains('active')) {
         inputs.classList.remove('opacity-40', 'pointer-events-none');
       } else {
@@ -562,11 +1027,11 @@
       const msg = document.getElementById('hours-save-msg');
       btn.disabled = true;
 
-      const rows = document.querySelectorAll('#hours-list [data-day]');
+      const rows = document.querySelectorAll('#hours-list .hours-row');
       const updates = [];
 
       rows.forEach(row => {
-        const dayOfWeek = parseInt(row.dataset.day);
+        const dayOfWeek = parseInt(row.dataset.dayRow);
         const isActive = row.querySelector('.toggle-switch').classList.contains('active');
         const startTime = row.querySelector('.hour-start').value;
         const endTime = row.querySelector('.hour-end').value;
@@ -595,6 +1060,109 @@
       btn.disabled = false;
       msg.classList.remove('hidden');
       setTimeout(() => msg.classList.add('hidden'), 2000);
+    }
+
+    // ============================================================
+    // Bulk Apply to All Days
+    // ============================================================
+    function applyBulk() {
+      const target = document.getElementById('bulk-target').value;
+      const bulkStart = document.getElementById('bulk-start').value;
+      const bulkEnd = document.getElementById('bulk-end').value;
+      if (!bulkStart || !bulkEnd) return;
+
+      // weekday: 월(1)~금(5), weekend: 토(6)+일(0), all: 전부
+      let targetDays;
+      if (target === 'weekday') targetDays = [1, 2, 3, 4, 5];
+      else if (target === 'weekend') targetDays = [0, 6];
+      else targetDays = [0, 1, 2, 3, 4, 5, 6];
+
+      const rows = document.querySelectorAll('#hours-list .hours-row');
+      rows.forEach(row => {
+        const day = parseInt(row.dataset.dayRow);
+        if (!targetDays.includes(day)) return;
+
+        row.querySelector('.hour-start').value = bulkStart;
+        row.querySelector('.hour-end').value = bulkEnd;
+        const toggle = row.querySelector('.toggle-switch');
+        if (!toggle.classList.contains('active')) {
+          toggle.classList.add('active');
+          row.querySelector('.hours-inputs').classList.remove('opacity-40', 'pointer-events-none');
+        }
+      });
+    }
+
+    // ============================================================
+    // Excluded Times (weekly recurring)
+    // ============================================================
+    let excludedTimes = [];
+
+    async function loadExcludedTimes() {
+      if (isSupabaseConnected) {
+        const { data } = await db.from('excluded_times').select('*').order('day_of_week').order('excluded_time');
+        excludedTimes = data || [];
+      }
+      renderExcludedTimes();
+    }
+
+    function renderExcludedTimes() {
+      const container = document.getElementById('excluded-times-list');
+      const noMsg = document.getElementById('no-excluded');
+      const SHORT_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+      if (excludedTimes.length === 0) {
+        container.innerHTML = '';
+        noMsg.classList.remove('hidden');
+        return;
+      }
+
+      noMsg.classList.add('hidden');
+      container.innerHTML = excludedTimes.map(et => `
+        <div class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-gray-100">
+          <span class="text-sm">
+            <span class="font-medium ${et.day_of_week === 0 ? 'text-red-500' : et.day_of_week === 6 ? 'text-blue-500' : 'text-gray-900'}">${SHORT_DAYS[et.day_of_week]}</span>
+            <span class="text-gray-500 ml-2">${formatTimeDisplay(et.excluded_time)} - ${formatTimeDisplay(addOneHour(et.excluded_time))}</span>
+          </span>
+          <button onclick="removeExcludedTime('${et.id}')" class="text-xs px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 transition-colors">삭제</button>
+        </div>
+      `).join('');
+    }
+
+    function addOneHour(time) {
+      const [h, m] = time.split(':').map(Number);
+      return `${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    async function addExcludedTime() {
+      const dayVal = document.getElementById('exclude-day').value;
+      const time = document.getElementById('exclude-time').value;
+      if (!time) { alert('제외할 시간을 선택해주세요.'); return; }
+
+      const days = dayVal === 'all' ? [0, 1, 2, 3, 4, 5, 6] : [parseInt(dayVal)];
+
+      for (const day of days) {
+        const entry = { day_of_week: day, excluded_time: time };
+        if (isSupabaseConnected) {
+          await db.from('excluded_times').upsert(entry, { onConflict: 'day_of_week,excluded_time' });
+        } else {
+          const exists = excludedTimes.find(e => e.day_of_week === day && e.excluded_time === time);
+          if (!exists) {
+            excludedTimes.push({ ...entry, id: String(Date.now()) + day });
+          }
+        }
+      }
+
+      document.getElementById('exclude-time').value = '';
+      await loadExcludedTimes();
+    }
+
+    async function removeExcludedTime(id) {
+      if (isSupabaseConnected) {
+        await db.from('excluded_times').delete().eq('id', id);
+      } else {
+        excludedTimes = excludedTimes.filter(e => e.id !== id);
+      }
+      await loadExcludedTimes();
     }
 
     // ============================================================
