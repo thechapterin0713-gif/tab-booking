@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>태오의 실행 비즈니스 (TAB) - 1:1 코칭 예약</title>
+  <title>태오의 실행 비즈니스 (TAB) - 1:1 무료 진단 컨설팅</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -23,10 +23,10 @@
               800: '#162b0b',
               900: '#0e1c07',
             },
-            amber: {
-              400: '#FBBF24',
-              500: '#F59E0B',
-              600: '#D97706',
+            warm: {
+              50: '#FAFAF5',
+              100: '#F5F0E8',
+              200: '#EBE3D5',
             }
           },
           fontFamily: {
@@ -42,6 +42,7 @@
   <style>
     * { font-family: 'Pretendard', system-ui, sans-serif; }
     body { background: #FAFAF5; }
+    html { scroll-behavior: smooth; }
 
     .slot-btn {
       transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -105,22 +106,32 @@
     }
 
     .fade-in {
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.5s ease;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(16px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     .btn-primary {
       background: #2D5016;
       color: white;
-      transition: background-color 0.15s ease, transform 0.15s ease;
+      transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .btn-primary:hover { background: #1E3A0F; transform: scale(1.02); }
+    .btn-primary:hover { background: #1E3A0F; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(45, 80, 22, 0.3); }
     .btn-primary:focus { outline: none; box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.3); }
     .btn-primary:active { transform: scale(0.98); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-outline {
+      border: 2px solid #2D5016;
+      color: #2D5016;
+      background: transparent;
+      transition: background-color 0.15s ease, transform 0.15s ease, color 0.15s ease;
+    }
+    .btn-outline:hover { background: #2D5016; color: white; transform: translateY(-1px); }
+    .btn-outline:focus { outline: none; box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.3); }
+    .btn-outline:active { transform: scale(0.98); }
 
     .btn-kakao {
       background: #FEE500;
@@ -130,76 +141,264 @@
     .btn-kakao:hover { background: #F5DC00; transform: scale(1.02); }
     .btn-kakao:focus { outline: none; box-shadow: 0 0 0 3px rgba(254, 229, 0, 0.4); }
     .btn-kakao:active { transform: scale(0.98); }
+
+    .benefit-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .benefit-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(45, 80, 22, 0.12);
+    }
+
+    /* Navigation active state */
+    .nav-link {
+      position: relative;
+      transition: color 0.15s ease;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #2D5016;
+      transition: width 0.2s ease;
+    }
+    .nav-link:hover::after {
+      width: 100%;
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body class="min-h-screen">
 
   <!-- Header -->
-  <header class="bg-white border-b border-gray-100">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center">
-          <span class="text-white font-bold text-lg">T</span>
-        </div>
+  <header class="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-3">
+        <span class="text-2xl">🌱</span>
         <div>
           <h1 class="text-lg font-bold text-gray-900">태오의 실행 비즈니스</h1>
-          <p class="text-xs text-gray-500">TAB - Take Action in Business</p>
         </div>
-      </div>
-      <nav class="flex gap-4 text-sm">
-        <a href="#consultation" class="text-gray-600 hover:text-brand-500 transition-colors">무료 상담</a>
-        <a href="#booking" class="text-gray-600 hover:text-brand-500 transition-colors">예약하기</a>
+      </a>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+        <a href="#hero" class="nav-link text-gray-600 hover:text-brand-500">메인</a>
+        <a href="#benefits" class="nav-link text-gray-600 hover:text-brand-500">서비스 소개</a>
+        <a href="#booking" class="nav-link text-gray-600 hover:text-brand-500">예약하기</a>
+        <div class="relative" id="admin-menu">
+          <button onclick="document.getElementById('admin-dropdown').classList.toggle('hidden')" class="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="text-sm">관리자</span>
+          </button>
+          <div id="admin-dropdown" class="hidden absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+            <a href="./admin.html" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              관리자 대시보드
+            </a>
+          </div>
+        </div>
       </nav>
+      <!-- Mobile Menu Button -->
+      <button id="mobile-menu-btn" class="md:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100" onclick="toggleMobileMenu()">
+        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-100 bg-white">
+      <div class="px-4 py-3 space-y-1">
+        <a href="#hero" onclick="closeMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">메인</a>
+        <a href="#benefits" onclick="closeMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">서비스 소개</a>
+        <a href="#booking" onclick="closeMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">예약하기</a>
+        <a href="./admin.html" class="block px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-50">관리자</a>
+      </div>
     </div>
   </header>
 
-  <!-- Hero -->
-  <section class="py-16 md:py-24">
-    <div class="max-w-4xl mx-auto px-4 text-center">
-      <span class="inline-block px-3 py-1 bg-brand-50 text-brand-500 text-sm font-medium rounded-full mb-4">1:1 코칭 프로그램</span>
-      <h2 class="text-3xl md:text-5xl font-bold text-gray-900 leading-tight mb-6">
-        실행으로 바꾸는<br>
-        <span class="text-brand-500">비즈니스 코칭</span>
+  <!-- Hero Section -->
+  <section id="hero" class="py-20 md:py-32 relative overflow-hidden">
+    <div class="absolute inset-0 opacity-5" style="background-image: radial-gradient(circle at 20% 50%, #2D5016 0%, transparent 50%), radial-gradient(circle at 80% 50%, #2D5016 0%, transparent 50%);"></div>
+    <div class="max-w-4xl mx-auto px-4 text-center relative">
+      <p class="text-brand-500 text-sm md:text-base font-medium tracking-wide mb-6 fade-in">1인 창업가의 지속 가능한 성장을 돕습니다</p>
+      <h2 class="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6 fade-in" style="animation-delay: 0.1s;">
+        지속가능한 1인 비즈니스를 위한<br>
+        <span class="text-brand-500">1:1 무료 진단 컨설팅</span>
       </h2>
-      <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-        아이디어만 있고 실행이 막막하신가요?<br>
-        1:1 맞춤 코칭으로 당신의 비즈니스를 함께 만들어갑니다.
+      <p class="text-base md:text-lg text-gray-500 max-w-xl mx-auto mb-4 leading-relaxed fade-in" style="animation-delay: 0.2s;">
+        막연한 아이디어를 현실적인 수익 모델로,<br>
+        복잡한 마케팅을 자동화된 시스템으로 바꿔드립니다.
       </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a href="#consultation" class="btn-primary px-8 py-3 rounded-xl text-base font-semibold inline-block text-center">무료 상담 신청하기</a>
-        <a href="#booking" class="px-8 py-3 rounded-xl text-base font-semibold border-2 border-brand-500 text-brand-500 hover:bg-brand-50 transition-colors inline-block text-center">바로 예약하기</a>
-      </div>
+      <p class="text-base md:text-lg text-gray-700 font-medium mb-10 fade-in" style="animation-delay: 0.3s;">
+        더 이상 혼자 고민하지 마세요.
+      </p>
+      <a href="#booking" class="btn-primary inline-block px-10 py-4 rounded-2xl text-base md:text-lg font-bold fade-in" style="animation-delay: 0.4s;">
+        바로 예약하기
+      </a>
     </div>
   </section>
 
-  <!-- Section: 무료 상담 신청 (Tally Form) -->
-  <section id="consultation" class="py-16 bg-white">
+  <!-- Target Audience Section -->
+  <section class="py-16 md:py-24">
     <div class="max-w-4xl mx-auto px-4">
-      <div class="text-center mb-10">
-        <span class="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full mb-3">STEP 1</span>
-        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">무료 상담 신청</h3>
-        <p class="text-gray-600">간단한 설문을 작성해주시면, 맞춤 상담을 안내해드립니다.</p>
-      </div>
+      <div class="grid md:grid-cols-2 gap-6 md:gap-8">
+        <!-- NOT for you -->
+        <div class="reveal bg-white rounded-2xl border border-gray-100 p-8 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-1 bg-gray-300"></div>
+          <div class="flex items-center gap-3 mb-6">
+            <span class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xl font-bold">✕</span>
+            <h3 class="text-lg font-bold text-gray-700">이런 분이라면 다른 곳을<br>찾아보시는 게 나을 수 있습니다</h3>
+          </div>
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <span class="text-gray-300 mt-0.5 flex-shrink-0">✕</span>
+              <span class="text-gray-500 text-sm leading-relaxed">빠르게 돈 버는 부업을 찾고 계신 분</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-gray-300 mt-0.5 flex-shrink-0">✕</span>
+              <span class="text-gray-500 text-sm leading-relaxed">"일단 방법만 알려줘" 식으로 실행 없이 정보만 원하시는 분</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-gray-300 mt-0.5 flex-shrink-0">✕</span>
+              <span class="text-gray-500 text-sm leading-relaxed">누군가의 문제를 해결하는 것보다, 내 수익이 먼저인 분</span>
+            </li>
+          </ul>
+        </div>
 
-      <!-- Tally Form Embed -->
-      <div id="tally-form-container" class="max-w-2xl mx-auto">
-        <div class="bg-white rounded-2xl overflow-hidden" style="min-height: 400px;">
-          <iframe data-tally-src="https://tally.so/embed/BzKzDN?alignLeft=1&hideTitle=0&transparentBackground=1&dynamicHeight=1"
-                  loading="lazy" width="100%" height="500" frameborder="0" marginheight="0" marginwidth="0"
-                  title="무료 상담 신청"></iframe>
-          <script>var d=document,w="https://tally.so/widgets/embed.js",v=function(){"undefined"!=typeof Tally?Tally.loadEmbeds():d.querySelectorAll("iframe[data-tally-src]:not([src])").forEach((function(e){e.src=e.dataset.tallySrc}))};if("undefined"!=typeof Tally)v();else if(d.querySelector('script[src="'+w+'"]')==null){var s=d.createElement("script");s.src=w,s.onload=v,s.onerror=v,d.body.appendChild(s)}</script>
+        <!-- FOR you -->
+        <div class="reveal bg-white rounded-2xl border border-brand-100 p-8 relative overflow-hidden" style="box-shadow: 0 4px 24px rgba(45, 80, 22, 0.08);">
+          <div class="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
+          <div class="flex items-center gap-3 mb-6">
+            <span class="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center text-brand-500 text-xl font-bold">✓</span>
+            <h3 class="text-lg font-bold text-gray-900">이런 분이라면<br>꼭 신청해주세요</h3>
+          </div>
+          <ul class="space-y-4">
+            <li class="flex items-start gap-3">
+              <span class="text-brand-500 mt-0.5 flex-shrink-0">✓</span>
+              <span class="text-gray-700 text-sm leading-relaxed">경험이나 전문지식은 있는데, 어떻게 사업으로 만들지 막막한 분</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-brand-500 mt-0.5 flex-shrink-0">✓</span>
+              <span class="text-gray-700 text-sm leading-relaxed">돈도 중요하지만, '의미 있는 일'을 하고 싶다는 마음이 있는 분</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-brand-500 mt-0.5 flex-shrink-0">✓</span>
+              <span class="text-gray-700 text-sm leading-relaxed">혼자 해보다가 방향을 잃어서, 누군가 옆에서 잡아줬으면 하는 분</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-brand-500 mt-0.5 flex-shrink-0">✓</span>
+              <span class="text-gray-700 text-sm leading-relaxed">완벽한 준비보다 일단 시작하고 싶은데 첫 걸음이 안 떼지는 분</span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Section: 1:1 코칭 예약 (Calendar Booking) -->
-  <section id="booking" class="py-16">
+  <!-- Consulting Benefits Section -->
+  <section id="benefits" class="py-16 md:py-24 bg-white">
     <div class="max-w-4xl mx-auto px-4">
-      <div class="text-center mb-10">
-        <span class="inline-block px-3 py-1 bg-brand-50 text-brand-500 text-sm font-medium rounded-full mb-3">STEP 2</span>
-        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-3">1:1 코칭 예약</h3>
-        <p class="text-gray-600">원하시는 날짜와 시간을 선택해주세요.</p>
+      <div class="text-center mb-12 reveal">
+        <span class="inline-block px-4 py-1.5 bg-brand-50 text-brand-500 text-sm font-semibold rounded-full mb-4">Consulting Benefits</span>
+        <h3 class="text-2xl md:text-4xl font-bold text-gray-900">
+          1:1 컨설팅 1시간에서<br>얻어가시는 것
+        </h3>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-6 mb-12">
+        <!-- Benefit 1 -->
+        <div class="benefit-card reveal bg-warm-50 rounded-2xl p-7 border border-gray-100">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center text-sm font-bold">①</span>
+            <h4 class="text-lg font-bold text-gray-900">방향 진단</h4>
+          </div>
+          <p class="text-sm text-gray-600 leading-relaxed">
+            "내가 풀 수 있는 문제"가 무엇인지, 당신의 과거 경험에서 함께 찾습니다. 많은 분들이 아이템이 없다고 생각하지만, 대부분 이미 갖고 있는데 못 보고 있는 경우가 많습니다.
+          </p>
+        </div>
+
+        <!-- Benefit 2 -->
+        <div class="benefit-card reveal bg-warm-50 rounded-2xl p-7 border border-gray-100">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center text-sm font-bold">②</span>
+            <h4 class="text-lg font-bold text-gray-900">한 문장 설계</h4>
+          </div>
+          <p class="text-sm text-gray-600 leading-relaxed">
+            막연한 생각을 "나는 ___에게 ___를 통해 ___를 돕는다"는 한 문장으로 좁혀봅니다. 이 한 문장이 콘텐츠, 제품, 마케팅 전체의 출발점이 됩니다.
+          </p>
+        </div>
+
+        <!-- Benefit 3 -->
+        <div class="benefit-card reveal bg-warm-50 rounded-2xl p-7 border border-gray-100">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center text-sm font-bold">③</span>
+            <h4 class="text-lg font-bold text-gray-900">현실 점검</h4>
+          </div>
+          <p class="text-sm text-gray-600 leading-relaxed">
+            지금 하고 있는 것이 지속 가능한 방향인지, 아니면 에너지만 소모하고 있는 건 아닌지 솔직하게 짚어드립니다. 듣기 좋은 말보다, 필요한 말을 합니다.
+          </p>
+        </div>
+
+        <!-- Benefit 4 -->
+        <div class="benefit-card reveal bg-warm-50 rounded-2xl p-7 border border-gray-100">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center text-sm font-bold">④</span>
+            <h4 class="text-lg font-bold text-gray-900">적합성 판단</h4>
+          </div>
+          <p class="text-sm text-gray-600 leading-relaxed">
+            이 컨설팅이 당신에게 진짜 맞는지, 서로 확인합니다. 맞지 않으면 제가 먼저 말씀드립니다. 억지로 권하지 않습니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- Quote Block -->
+      <div class="reveal max-w-2xl mx-auto">
+        <div class="bg-warm-50 rounded-2xl p-8 md:p-10 border border-gray-100 text-center">
+          <p class="text-gray-600 text-sm leading-relaxed mb-6">
+            이 1시간은 "프로그램 설명회"가 아닙니다.<br>
+            당신의 상황을 진단하고, 방향을 함께 잡아보는 시간입니다.
+          </p>
+          <p class="text-xl md:text-2xl font-bold text-gray-900 mb-6">
+            "아, 내가 뭘 해야 하는지 좀 보인다"
+          </p>
+          <p class="text-gray-500 text-sm">
+            그것만으로도 가치가 있도록 준비하겠습니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="py-16 md:py-24 relative overflow-hidden">
+    <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(circle at 50% 50%, #2D5016 0%, transparent 70%);"></div>
+    <div class="max-w-4xl mx-auto px-4 text-center relative">
+      <div class="reveal">
+        <p class="text-brand-500 text-sm font-semibold mb-4">성장의 첫 걸음, 지금 시작하세요</p>
+        <h3 class="text-2xl md:text-4xl font-bold text-gray-900 mb-8">1:1 무료 진단 컨설팅 예약</h3>
+        <a href="#booking" class="btn-primary inline-block px-10 py-4 rounded-2xl text-base md:text-lg font-bold">
+          지금 예약하기
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Booking Section -->
+  <section id="booking" class="py-16 md:py-24 bg-white">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="text-center mb-10 reveal">
+        <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">예약하기</h3>
+        <p class="text-gray-500 text-sm">원하시는 날짜와 시간을 선택해주세요.</p>
       </div>
 
       <div class="max-w-3xl mx-auto">
@@ -210,7 +409,6 @@
 
         <!-- Calendar -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <!-- Calendar Header -->
           <div class="flex items-center justify-between mb-6">
             <button id="prev-month" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -221,7 +419,6 @@
             </button>
           </div>
 
-          <!-- Day Names -->
           <div class="grid grid-cols-7 mb-2">
             <div class="text-center text-sm font-medium text-red-400 py-2">일</div>
             <div class="text-center text-sm font-medium text-gray-500 py-2">월</div>
@@ -232,10 +429,7 @@
             <div class="text-center text-sm font-medium text-blue-400 py-2">토</div>
           </div>
 
-          <!-- Calendar Grid -->
-          <div id="calendar-grid" class="grid grid-cols-7 gap-1">
-            <!-- Rendered by JS -->
-          </div>
+          <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
         </div>
 
         <!-- Time Slots -->
@@ -244,9 +438,7 @@
             <span id="selected-date-display"></span> 예약 가능 시간
           </h4>
           <p class="text-sm text-gray-500 mb-4">원하시는 시간을 선택해주세요. (1시간 단위)</p>
-          <div id="time-slots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            <!-- Rendered by JS -->
-          </div>
+          <div id="time-slots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
           <div id="no-slots-msg" class="text-center py-8 hidden">
             <p class="text-gray-400">이 날짜에는 예약 가능한 시간이 없습니다.</p>
           </div>
@@ -290,9 +482,13 @@
   </section>
 
   <!-- Footer -->
-  <footer class="bg-white border-t border-gray-100 py-8">
+  <footer class="bg-gray-900 py-10">
     <div class="max-w-4xl mx-auto px-4 text-center">
-      <p class="text-sm text-gray-400">&copy; 2026 태오의 실행 비즈니스 (TAB). All rights reserved.</p>
+      <div class="flex items-center justify-center gap-2 mb-3">
+        <span class="text-xl">🌱</span>
+        <span class="text-white font-bold">태오의 실행 비즈니스</span>
+      </div>
+      <p class="text-sm text-gray-500">&copy; 2026 TAB (Take Action in Business). All rights reserved.</p>
     </div>
   </footer>
 
@@ -310,9 +506,7 @@
             <svg class="w-8 h-8 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           </div>
           <h3 class="text-2xl font-bold text-gray-900 mb-2">예약이 완료되었습니다!</h3>
-          <div id="modal-booking-info" class="bg-gray-50 rounded-xl p-4 mb-6 text-left">
-            <!-- Filled by JS -->
-          </div>
+          <div id="modal-booking-info" class="bg-gray-50 rounded-xl p-4 mb-6 text-left"></div>
 
           <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
             <p class="text-sm font-semibold text-gray-800 mb-2">아래 카카오톡 오픈채팅방에서<br>예약하신 날짜와 시간을 메시지로 보내주세요!</p>
@@ -345,9 +539,31 @@
 
   <script>
     // ============================================================
+    // Mobile Menu
+    // ============================================================
+    function toggleMobileMenu() {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    }
+    function closeMobileMenu() {
+      document.getElementById('mobile-menu').classList.add('hidden');
+    }
+
+    // ============================================================
+    // Scroll Reveal
+    // ============================================================
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+    // ============================================================
     // Supabase Configuration
     // ============================================================
-    // TODO: 아래 값을 실제 Supabase 프로젝트 값으로 교체하세요
     const SUPABASE_URL = 'https://coiwqnyuhwhejdafsrrg.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvaXdxbnl1aHdoZWpkYWZzcnJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMDE5NTksImV4cCI6MjA4NzY3Nzk1OX0.FoSwF90RaBXbE9O04naNDlLUpDWdcjRxKVXjgKfbcBU';
 
@@ -375,7 +591,7 @@
     let bookingsForMonth = [];
 
     // ============================================================
-    // Demo Data (Supabase 미연결 시 사용)
+    // Demo Data
     // ============================================================
     const demoOperatingHours = [
       { day_of_week: 0, start_time: '10:00', end_time: '18:00', is_active: false },
@@ -400,6 +616,7 @@
         bookingsForMonth = demoBookings;
       } else {
         await loadOperatingHours();
+        await loadMonthData();
       }
       renderCalendar();
 
@@ -415,6 +632,15 @@
       });
 
       document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
+
+      // Close admin dropdown on outside click
+      document.addEventListener('click', (e) => {
+        const menu = document.getElementById('admin-menu');
+        const dropdown = document.getElementById('admin-dropdown');
+        if (menu && !menu.contains(e.target)) {
+          dropdown.classList.add('hidden');
+        }
+      });
     });
 
     async function onMonthChange() {
@@ -472,12 +698,10 @@
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Empty cells
       for (let i = 0; i < firstDayOfMonth; i++) {
         grid.appendChild(createEmptyCell());
       }
 
-      // Day cells
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day);
         const dateStr = formatDate(date);
@@ -514,20 +738,16 @@
 
     function getHoursForDate(date, dayOfWeek) {
       const dateStr = formatDate(date);
-
-      // Check date override first
       const override = dateOverrides.find(o => o.date === dateStr);
       if (override) {
         if (override.is_blocked) return null;
         if (override.start_time && override.end_time) {
-          return { start: override.start_time, end: override.end_time };
+          return { start: normalizeTime(override.start_time), end: normalizeTime(override.end_time) };
         }
       }
-
-      // Fall back to operating hours
       const hours = operatingHours.find(h => h.day_of_week === dayOfWeek);
       if (!hours || !hours.is_active) return null;
-      return { start: hours.start_time, end: hours.end_time };
+      return { start: normalizeTime(hours.start_time), end: normalizeTime(hours.end_time) };
     }
 
     // ============================================================
@@ -561,7 +781,6 @@
         return;
       }
 
-      // Get bookings for this date
       let bookedTimes = new Set();
       if (isSupabaseConnected) {
         const { data } = await db
@@ -569,14 +788,31 @@
           .select('start_time')
           .eq('date', dateStr)
           .eq('status', 'confirmed');
-        if (data) bookedTimes = new Set(data.map(b => b.start_time));
+        if (data) bookedTimes = new Set(data.map(b => normalizeTime(b.start_time)));
       } else {
         bookedTimes = new Set(
-          demoBookings.filter(b => b.date === dateStr).map(b => b.start_time)
+          demoBookings.filter(b => b.date === dateStr).map(b => normalizeTime(b.start_time))
         );
       }
 
-      // Generate 1-hour slots
+      let excludedTimes = new Set();
+      if (isSupabaseConnected) {
+        const { data } = await db
+          .from('excluded_times')
+          .select('excluded_time')
+          .eq('day_of_week', dayOfWeek);
+        if (data) excludedTimes = new Set(data.map(e => normalizeTime(e.excluded_time)));
+      }
+
+      let fixedTimes = new Set();
+      if (isSupabaseConnected) {
+        const { data } = await db
+          .from('fixed_bookings')
+          .select('start_time')
+          .eq('day_of_week', dayOfWeek);
+        if (data) fixedTimes = new Set(data.map(f => normalizeTime(f.start_time)));
+      }
+
       const slots = generateSlots(hours.start, hours.end);
 
       if (slots.length === 0) {
@@ -589,18 +825,19 @@
       noMsg.classList.add('hidden');
       grid.innerHTML = '';
 
-      // Check if date is today, filter out past times
       const now = new Date();
       const isToday = date.toDateString() === now.toDateString();
 
       slots.forEach(slot => {
         const isBooked = bookedTimes.has(slot.start);
+        const isExcluded = excludedTimes.has(slot.start);
+        const isFixed = fixedTimes.has(slot.start);
         let isPastTime = false;
         if (isToday) {
           const [h] = slot.start.split(':').map(Number);
           isPastTime = h <= now.getHours();
         }
-        const isDisabled = isBooked || isPastTime;
+        const isDisabled = isBooked || isPastTime || isExcluded || isFixed;
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -612,7 +849,7 @@
               ? 'bg-brand-500 border-brand-500 text-white'
               : 'bg-white border-gray-200 text-gray-700 hover:border-brand-500 hover:text-brand-500'
         }`;
-        btn.innerHTML = `${formatTimeDisplay(slot.start)} - ${formatTimeDisplay(slot.end)}${isBooked ? '<br><span class="text-xs">예약완료</span>' : ''}`;
+        btn.innerHTML = `${formatTimeShort(slot.start)}${isBooked || isFixed ? '<br><span class="text-xs">예약완료</span>' : ''}`;
 
         if (!isDisabled) {
           btn.addEventListener('click', () => selectSlot(slot, date));
@@ -622,14 +859,11 @@
       });
 
       container.classList.remove('hidden');
-
-      // Scroll to time slots
       container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function selectSlot(slot, date) {
       selectedSlot = slot;
-      // Re-render slots to show selection
       showTimeSlots(date);
       showBookingForm(date, slot);
     }
@@ -690,7 +924,6 @@
           return;
         }
       } else {
-        // Demo mode: simulate delay
         await new Promise(r => setTimeout(r, 800));
         demoBookings.push({ date: bookingData.date, start_time: bookingData.start_time });
       }
@@ -698,7 +931,6 @@
       showLoading(false);
       showConfirmationModal(bookingData);
 
-      // Reset form
       document.getElementById('booking-form').reset();
       submitBtn.disabled = false;
       selectedSlot = null;
@@ -740,7 +972,6 @@
     function closeModal() {
       document.getElementById('confirmation-modal').classList.add('hidden');
       document.body.style.overflow = '';
-      // Refresh calendar
       if (isSupabaseConnected) {
         loadMonthData().then(() => renderCalendar());
       } else {
@@ -777,6 +1008,19 @@
         startH++;
       }
       return slots;
+    }
+
+    function formatTimeShort(time) {
+      const [h] = time.split(':').map(Number);
+      const period = h < 12 ? '오전' : '오후';
+      const displayH = h <= 12 ? h : h - 12;
+      return `${period} ${displayH}시`;
+    }
+
+    function normalizeTime(t) {
+      if (!t) return t;
+      const parts = t.split(':');
+      return `${parts[0]}:${parts[1]}`;
     }
 
     function formatDate(date) {
