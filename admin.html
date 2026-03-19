@@ -808,19 +808,23 @@
       loadCalendar();
     }
 
+    let calFixedBookings = [];
+
     async function loadCalendar() {
-      const firstDay = new Date(calYear, calMonth, 1);
       const lastDay = new Date(calYear, calMonth + 1, 0);
       const startStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
       const endStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
 
       if (isSupabaseConnected) {
-        const { data } = await db.from('bookings').select('*')
-          .gte('date', startStr).lte('date', endStr)
-          .order('start_time');
-        calBookings = data || [];
+        const [bookingsRes, fixedRes] = await Promise.all([
+          db.from('bookings').select('*').gte('date', startStr).lte('date', endStr).order('start_time'),
+          db.from('fixed_bookings').select('*').order('start_time')
+        ]);
+        calBookings = bookingsRes.data || [];
+        calFixedBookings = fixedRes.data || [];
       } else {
         calBookings = demoBookings.filter(b => b.date >= startStr && b.date <= endStr);
+        calFixedBookings = fixedBookings || [];
       }
 
       renderAdminCalendar();
@@ -860,13 +864,31 @@
         else if (dow === 6) dayNumClass += ' text-blue-400';
         else dayNumClass += ' text-gray-700';
 
+        // Fixed bookings for this day of week
+        const dayFixed = calFixedBookings.filter(f => f.day_of_week === dow);
+
         let html = `<div class="${dayNumClass}">${day}${isToday ? ' <span class="text-[0.6rem] text-brand-500 font-normal">오늘</span>' : ''}</div>`;
 
-        dayBookings.forEach(b => {
-          const timeStr = formatTimeDisplay(b.start_time);
-          html += `<div class="cal-booking ${b.status}" onclick="openEditModal('${b.id}')" title="${b.name} ${timeStr}">
-            <span class="font-semibold">${timeStr}</span> ${b.name || ''}
-          </div>`;
+        // Merge and sort by start_time
+        const allItems = [];
+        dayBookings.forEach(b => allItems.push({ type: 'booking', data: b, time: b.start_time }));
+        dayFixed.forEach(f => allItems.push({ type: 'fixed', data: f, time: f.start_time }));
+        allItems.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+        allItems.forEach(item => {
+          if (item.type === 'booking') {
+            const b = item.data;
+            const timeStr = formatTimeDisplay(b.start_time);
+            html += `<div class="cal-booking ${b.status}" onclick="openEditModal('${b.id}')" title="${b.name} ${timeStr}">
+              <span class="font-semibold">${timeStr}</span> ${b.name || ''}
+            </div>`;
+          } else {
+            const f = item.data;
+            const timeStr = formatTimeDisplay(f.start_time);
+            html += `<div class="cal-booking" style="background:#EDE9FE;color:#6D28D9;" title="[고정] ${f.name} ${timeStr}">
+              <span class="font-semibold">${timeStr}</span> ${f.name || ''} <span style="font-size:0.6rem;">📌</span>
+            </div>`;
+          }
         });
 
         cell.innerHTML = html;
