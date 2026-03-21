@@ -88,6 +88,22 @@
     .cal-day.has-slots {
       position: relative;
     }
+    .cal-day.full-day {
+      background-color: #fee2e2;
+      color: #991b1b;
+      cursor: not-allowed;
+    }
+    .cal-day.full-day::after {
+      content: '마감';
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      font-weight: 700;
+      color: #dc2626;
+      white-space: nowrap;
+    }
     .cal-day.has-slots::after {
       content: '';
       position: absolute;
@@ -589,6 +605,8 @@
     let operatingHours = [];
     let dateOverrides = [];
     let bookingsForMonth = [];
+    let fixedBookingsAll = [];
+    const MAX_BOOKINGS_PER_DAY = 2;
 
     // ============================================================
     // Demo Data
@@ -616,6 +634,7 @@
         bookingsForMonth = demoBookings;
       } else {
         await loadOperatingHours();
+        await loadFixedBookings();
         await loadMonthData();
       }
       renderCalendar();
@@ -657,6 +676,19 @@
     // ============================================================
     // Data Loading
     // ============================================================
+    async function loadFixedBookings() {
+      const { data, error } = await db
+        .from('fixed_bookings')
+        .select('*');
+      if (!error && data) fixedBookingsAll = data;
+    }
+
+    function getBookingCountForDate(dateStr, dayOfWeek) {
+      const regularCount = bookingsForMonth.filter(b => b.date === dateStr).length;
+      const fixedCount = fixedBookingsAll.filter(f => f.day_of_week === dayOfWeek).length;
+      return regularCount + fixedCount;
+    }
+
     async function loadOperatingHours() {
       const { data, error } = await db
         .from('operating_hours')
@@ -712,9 +744,12 @@
         const isPast = date < minBookingDate;
 
         const hours = getHoursForDate(date, dayOfWeek);
-        const isAvailable = !isPast && hours !== null;
+        const bookingCount = getBookingCountForDate(dateStr, dayOfWeek);
+        const isFull = bookingCount >= MAX_BOOKINGS_PER_DAY;
+        const isAvailable = !isPast && hours !== null && !isFull;
         const isToday = date.getTime() === today.getTime();
         const isSelected = selectedDate && dateStr === formatDate(selectedDate);
+        const showFull = !isPast && hours !== null && isFull;
 
         const cell = document.createElement('button');
         cell.type = 'button';
@@ -722,7 +757,8 @@
         cell.className = `cal-day w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium cursor-pointer relative ${
           isSelected ? 'selected' : ''
         } ${isToday ? 'today' : ''} ${!isAvailable ? 'disabled' : ''} ${
-          isAvailable ? 'has-slots hover:cursor-pointer' : ''
+          showFull ? 'full-day' : ''
+        } ${isAvailable ? 'has-slots hover:cursor-pointer' : ''
         } ${dayOfWeek === 0 ? 'text-red-400' : ''} ${dayOfWeek === 6 ? 'text-blue-400' : ''}`;
 
         if (isAvailable) {
